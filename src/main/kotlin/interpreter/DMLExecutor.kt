@@ -10,18 +10,44 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
     override fun visitVariableDeclaration(ctx: DMLParser.VariableDeclarationContext): Any? {
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
-        val value = visit(ctx.expression())
-
+        val value = visit(ctx.expression()) ?: error("Runtime Error: Variable '$name' has no value.")
+    
         when (type) {
             "string" -> symbolTable.setVariable(name, value.toString())
-            "number" -> symbolTable.setVariable(name, (value as? Number)?.toInt() ?: 0)
-            "boolean" -> symbolTable.setVariable(name, value.toString().toBoolean())
-            "list" -> symbolTable.setVariable(name, value as? List<Any> ?: emptyList<Any>())
-            "map" -> symbolTable.setVariable(name, value as? Map<String, Any> ?: emptyMap<String, Any>())
-            else -> error("Unknown type: $type")
+            "number" -> {
+                if (value is Number) {
+                    symbolTable.setVariable(name, value.toInt())
+                } else {
+                    error("Type Error: Variable '$name' must be a number, got '${value::class.simpleName}'.")
+                }
+            }
+            "boolean" -> {
+                if (value is Boolean) {
+                    symbolTable.setVariable(name, value)
+                } else {
+                    error("Type Error: Variable '$name' must be a boolean, got '${value::class.simpleName}'.")
+                }
+            }
+            "list" -> {
+                if (value is List<*>) {
+                    symbolTable.setVariable(name, value)
+                } else {
+                    error("Type Error: Variable '$name' must be a list, got '${value::class.simpleName}'.")
+                }
+            }
+            "map" -> {
+                if (value is Map<*, *>) {
+                    symbolTable.setVariable(name, value)
+                } else {
+                    error("Type Error: Variable '$name' must be a map, got '${value::class.simpleName}'.")
+                }
+            }
+            else -> error("Syntax Error: Unknown type '$type' for variable '$name'.")
         }
+    
         return null
     }
+    
 
     override fun visitExpression(ctx: DMLParser.ExpressionContext): Any? {
         return visit(ctx.additionExpression())

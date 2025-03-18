@@ -13,11 +13,16 @@ fun main(args: Array<String>) {
     val file = File(fileName)
 
     if (!file.exists()) {
-        println("File does not exist: $fileName")
+        println("Error: File '$fileName' does not exist.")
         return
     }
 
     val code = file.readText()
-    val interpreter = DMLInterpreter()
-    interpreter.execute(code)
+
+    try {
+        val interpreter = DMLInterpreter()
+        interpreter.execute(code)
+    } catch (e: Exception) {
+        println("Runtime Error: ${e.message}")
+    }
 }
