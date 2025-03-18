@@ -1,3 +1,0 @@
-string text = "Hello, World!";
-number age = 25 + 5;
-boolean isAdult = true;

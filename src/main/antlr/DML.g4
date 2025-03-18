@@ -10,14 +10,28 @@ statement: variableDeclaration;
 
 variableDeclaration: TYPE IDENTIFIER '=' expression ';';
 
-TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map';
+expression: additionExpression;
 
-expression: STRING
-          | NUMBER
-          | BOOLEAN
-          | IDENTIFIER
-          | expression '+' expression
-          | '(' expression ')';
+additionExpression: propertyAccessExpression ( '+' propertyAccessExpression )* ;
+
+propertyAccessExpression: primaryExpression ( '.' IDENTIFIER )* ;
+
+primaryExpression: STRING
+                  | NUMBER
+                  | BOOLEAN
+                  | IDENTIFIER
+                  | listExpression
+                  | mapExpression
+                  | '(' expression ')'
+                  ;
+
+listExpression: '[' expression (',' expression)* ']' ;
+
+mapExpression: '{' pair (',' pair)* '}' ;
+
+pair: STRING ':' expression ;
+
+TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map';
 
 STRING: '"' .*? '"';
 NUMBER: [0-9]+;

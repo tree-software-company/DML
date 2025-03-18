@@ -1,0 +1,2 @@
+map user = { "name": "Szymon", "age": 25 };
+string message = "Witaj, " + user.name;

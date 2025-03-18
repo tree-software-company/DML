@@ -5,7 +5,7 @@ import java.io.File
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
-        println("Użycie: java -jar dml-cli.jar <plik.dml>")
+        println("Usage: java -jar dml-cli.jar <file.dml>")
         return
     }
 
@@ -13,7 +13,7 @@ fun main(args: Array<String>) {
     val file = File(fileName)
 
     if (!file.exists()) {
-        println("Plik nie istnieje: $fileName")
+        println("File does not exist: $fileName")
         return
     }
 

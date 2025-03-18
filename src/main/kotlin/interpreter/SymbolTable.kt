@@ -8,10 +8,10 @@ class SymbolTable {
     }
 
     fun getVariable(name: String): Any? {
-        return variables[name] ?: error("Nieznana zmienna: $name")
+        return variables[name] ?: error("Unknown variable: $name")
     }
 
     fun printVariables() {
-        println("Zmienne: $variables")
+        println("Variables: $variables")
     }
 }

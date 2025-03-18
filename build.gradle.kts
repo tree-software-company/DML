@@ -10,7 +10,6 @@ repositories {
 }
 
 dependencies {
-    // ANTLR - generowanie parsera
     antlr("org.antlr:antlr4:4.13.1")
     implementation("org.antlr:antlr4:4.13.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
