@@ -32,7 +32,7 @@ java {
 }
 
 application {
-    mainClass.set("cli.MainKt")
+    mainClass.set("cli.CliKt")
 }
 
 sourceSets["main"].java.srcDir("build/generated-src/antlr/main")
@@ -47,12 +47,12 @@ tasks.generateGrammarSource {
 
 tasks.jar {
     manifest {
-        attributes["Main-Class"] = "cli.MainKt"
+        attributes["Main-Class"] = "cli.CliKt"
     }
 }
 
 tasks.shadowJar {
     manifest {
-        attributes["Main-Class"] = "cli.MainKt"
+        attributes["Main-Class"] = "cli.CliKt"
     }
 }

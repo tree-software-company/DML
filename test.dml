@@ -1,2 +1,2 @@
 map user = { "name": "Szymon" };
-string message = "Hello, " + user.age;
+string message = "Hello, " + user.name;
