@@ -34,7 +34,7 @@ jobs:
             JAR_URL="https://github.com/tree-software-company/dml/releases/latest/download/DML-all.jar"
             SHA256=$(cat ../checksum.txt)
 
-            cat > dml.rb <<'EOF'
+            cat > dml.rb \<<'EOF'
             class Dml < Formula
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/dml"
