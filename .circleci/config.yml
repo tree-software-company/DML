@@ -17,7 +17,7 @@ jobs:
             gradle --version
       - run:
           name: Build JAR
-          command: ./gradlew shadowJar
+          command: gradle build
       - run:
           name: Generate SHA256
           command: |
