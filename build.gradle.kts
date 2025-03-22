@@ -56,3 +56,7 @@ tasks.shadowJar {
         attributes["Main-Class"] = "cli.CliKt"
     }
 }
+
+tasks.shadowJar {
+    archiveFileName.set("DML-all.jar")
+}
