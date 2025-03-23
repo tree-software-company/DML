@@ -28,6 +28,13 @@ Think of it as a strongly-typed, comment-friendly version of JSON — built for 
 brew tap tree-software-company/dml
 brew install dml
 ```
+update this lang
+```bash
+brew uninstall dml
+brew untap tree-software-company/dml
+brew tap tree-software-company/dml
+brew install dml
+```
 Then you can use it globally like:
 
 ```bash
