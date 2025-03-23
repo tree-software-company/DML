@@ -36,7 +36,7 @@ jobs:
             git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml
 
-            JAR_URL="https://github.com/tree-software-company/dml/releases/latest/download/DML-all.jar"
+            JAR_URL="https://github.com/tree-software-company/DML/releases/download/0.1.0/DML-all.jar"
             SHA256=$(cat ../checksum.txt)
 
             cat > dml.rb \<<'EOF'
