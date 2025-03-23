@@ -23,7 +23,7 @@ jobs:
             git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml
             
-            cat > dml.rb <<EOF
+            cat > dml.rb \<<EOF
             class Dml < Formula
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/DML"
@@ -34,7 +34,7 @@ jobs:
             
               def install
                 libexec.install "DML-all.jar"
-                (bin/"dml").write <<~EOS
+                (bin/"dml").write \<<~EOS
                   #!/bin/bash
                   exec java -jar "\#{libexec}/DML-all.jar" "\$@"
                 EOS
