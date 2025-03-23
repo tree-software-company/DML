@@ -34,7 +34,7 @@ jobs:
             
               def install
                 libexec.install "DML-all.jar"
-                (bin/"dml").write <<~EOS
+                (bin/"dml").write \<<~EOS
                   #!/bin/bash
                   exec java -jar "\#{libexec}/DML-all.jar" "\$@"
                 EOS
