@@ -23,12 +23,17 @@ jobs:
           command: |
             shasum -a 256 build/libs/DML-all.jar | awk '{ print $1 }' > checksum.txt
       - run:
+          name: Setup SSH
+          command: |
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - run:
           name: Clone and update homebrew-dml formula
           command: |
             git config --global user.name "simon04PL"
             git config --global user.email "szymon.msa@gmail.com"
             
-            git clone https://github.com/tree-software-company/homebrew-dml.git
+            git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml
 
             JAR_URL="https://github.com/tree-software-company/dml/releases/latest/download/DML-all.jar"
@@ -58,7 +63,7 @@ jobs:
 
             git add dml.rb
             git commit -m "Update formula with new release"
-            git push https://$HOMEBREW_TOKEN@github.com/tree-software-company/homebrew-dml.git HEAD:main
+            git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
 
 workflows:
   version: 2
