@@ -36,14 +36,13 @@ jobs:
             git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml
 
-            JAR_URL="https://github.com/tree-software-company/DML/releases/download/0.1.0/DML-all.jar"
             SHA256=$(cat ../checksum.txt)
 
             cat > dml.rb \<<'EOF'
             class Dml < Formula
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/dml"
-              url "$JAR_URL"
+              url "https://github.com/tree-software-company/DML/releases/download/0.1.0/DML-all.jar"
               version "0.1.0"
               sha256 "$SHA256"
               license "Apache-2.0"
@@ -62,8 +61,13 @@ jobs:
             end
             EOF
 
+                        ...
             git add dml.rb
-            git commit -m "Update formula with new release"
+            if ! git diff --cached --quiet; then
+              git commit -m "Update formula with new release"
+            else
+              echo "No changes to commit"
+            fi
             git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
 
 workflows:
