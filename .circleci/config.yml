@@ -43,7 +43,7 @@ jobs:
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/dml"
               url "https://github.com/tree-software-company/DML/releases/download/0.1.0/DML-all.jar"
-              version "0.1.0"
+              version "0.1.0.1"
               sha256 "$SHA256"
               license "Apache-2.0"
 
@@ -65,10 +65,10 @@ jobs:
             git add dml.rb
             if ! git diff --cached --quiet; then
               git commit -m "Update formula with new release"
+              git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
             else
               echo "No changes to commit"
             fi
-            git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
 
 workflows:
   version: 2
