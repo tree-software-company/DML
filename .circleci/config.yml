@@ -44,8 +44,7 @@ jobs:
                 assert_match "DML Command Line Interface", shell_output("\#{bin}/dml help")
               end
             end
-
-            EOS
+            EOF
 
             git add dml.rb
             git commit -m "Update formula with new release"
