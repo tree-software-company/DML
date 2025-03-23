@@ -45,6 +45,8 @@ jobs:
               end
             end
 
+            EOS
+
             git add dml.rb
             git commit -m "Update formula with new release"
             git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
