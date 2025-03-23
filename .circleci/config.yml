@@ -5,7 +5,7 @@ jobs:
     docker:
       - image: cimg/openjdk:17.0
     environment:
-      RELEASE_ID: "0.1.0" 
+      RELEASE_ID: "206703369" 
       NEW_VERSION: "0.1.0"
     steps:
       - checkout
