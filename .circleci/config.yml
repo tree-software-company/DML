@@ -58,7 +58,7 @@ jobs:
 
             git add dml.rb
             git commit -m "Update formula with new release"
-            git push https://$GITHUB_TOKEN@github.com/tree-software-company/homebrew-dml.git HEAD:main
+            git push https://$HOMEBREW_TOKEN@github.com/tree-software-company/homebrew-dml.git HEAD:main
 
 workflows:
   version: 2
