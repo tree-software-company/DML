@@ -4,13 +4,16 @@ jobs:
   build:
     docker:
       - image: cimg/openjdk:17.0
+    environment:
+      RELEASE_ID: "0.1.0" 
+      NEW_VERSION: "0.1.0"
     steps:
       - checkout
       - run:
           name: Install dependencies
           command: |
             sudo apt update
-            sudo apt install -y curl unzip
+            sudo apt install -y curl unzip jq
             curl -s "https://get.sdkman.io" | bash
             source "$HOME/.sdkman/bin/sdkman-init.sh"
             sdk install gradle
@@ -28,9 +31,24 @@ jobs:
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
       - run:
+          name: Delete existing asset (if any)
+          command: |
+            EXISTING_ASSET=$(curl -s \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/tree-software-company/DML/releases/${RELEASE_ID}/assets?name=DML-all.jar" | jq -r '.[0].id')
+            if [ "$EXISTING_ASSET" != "null" ] && [ -n "$EXISTING_ASSET" ]; then
+              echo "Asset exists, deleting asset ID: $EXISTING_ASSET"
+              curl -s -X DELETE \
+                -H "Authorization: token ${GITHUB_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/tree-software-company/DML/releases/assets/${EXISTING_ASSET}"
+            else
+              echo "No existing asset to delete."
+            fi
+      - run:
           name: Upload JAR to release
           command: |
-            # Upewnij się, że zmienne GITHUB_TOKEN oraz RELEASE_ID są ustawione w środowisku
             curl \
               -X POST \
               -H "Authorization: token ${GITHUB_TOKEN}" \
@@ -47,9 +65,8 @@ jobs:
             cd homebrew-dml
 
             SHA256=$(cat ../checksum.txt)
-            NEW_VERSION="0.1.1" 
-
-            cat > dml.rb \<<EOF
+            
+            cat > dml.rb <<EOF
             class Dml < Formula
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/dml"
@@ -60,7 +77,7 @@ jobs:
 
               def install
                 libexec.install "DML-all.jar"
-                (bin/"dml").write \<<~EOS
+                (bin/"dml").write <<~EOS
                   #!/bin/bash
                   exec java -jar "\#{libexec}/DML-all.jar" "\$@"
                 EOS
