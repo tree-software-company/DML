@@ -6,60 +6,14 @@ jobs:
       - image: cimg/openjdk:17.0
     environment:
       NEW_VERSION: "0.1.0"
+      SHA256: "aa13858e5a234d666deb40820e9a2113a5e097792abef674e095a2c225801c10"
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            sudo apt update
-            sudo apt install -y curl unzip jq
-            curl -s "https://get.sdkman.io" | bash
-            source "$HOME/.sdkman/bin/sdkman-init.sh"
-            sdk install gradle
-            gradle --version
-      - run:
-          name: Build JAR
-          command: gradle build
-      - run:
-          name: Generate SHA256
-          command: |
-            shasum -a 256 build/libs/DML-all.jar | awk '{ print $1 }' > checksum.txt
       - run:
           name: Setup SSH
           command: |
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - run:
-          name: Get RELEASE_ID from tag
-          command: |
-            export RELEASE_ID=$(curl -s -H "Authorization: token ${HOMEBREW_TOKEN}" \
-              "https://api.github.com/repos/tree-software-company/DML/releases/tags/${NEW_VERSION}" | jq -r '.id')
-            echo "Pobrano RELEASE_ID=${RELEASE_ID}"
-      - run:
-          name: Delete existing asset (if any)
-          command: |
-            EXISTING_ASSET=$(curl -s \
-              -H "Authorization: token ${HOMEBREW_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/tree-software-company/DML/releases/${RELEASE_ID}/assets?name=DML-all.jar" | jq -r 'if type=="array" and length > 0 then .[0].id else "" end')
-            if [ -n "$EXISTING_ASSET" ]; then
-              echo "Asset exists, deleting asset ID: $EXISTING_ASSET"
-              curl -s -X DELETE \
-                -H "Authorization: token ${HOMEBREW_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/tree-software-company/DML/releases/assets/${EXISTING_ASSET}"
-            else
-              echo "No existing asset to delete."
-            fi
-      - run:
-          name: Upload JAR to release
-          command: |
-            curl \
-              -X POST \
-              -H "Authorization: token ${HOMEBREW_TOKEN}" \
-              -H "Content-Type: application/java-archive" \
-              --data-binary @build/libs/DML-all.jar \
-              "https://uploads.github.com/repos/tree-software-company/DML/releases/${RELEASE_ID}/assets?name=DML-all.jar"
       - run:
           name: Clone and update homebrew-dml formula
           command: |
@@ -68,15 +22,13 @@ jobs:
             
             git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml
-
-            SHA256=$(cat ../checksum.txt)
             
             cat > dml.rb \<<EOF
             class Dml < Formula
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/dml"
               url "https://github.com/tree-software-company/DML/releases/download/${NEW_VERSION}/DML-all.jar"
-              version "${NEW_VERSION}.1"
+              version "${NEW_VERSION}"
               sha256 "${SHA256}"
               license "Apache-2.0"
 
