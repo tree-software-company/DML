@@ -28,7 +28,6 @@ jobs:
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/DML"
               url "https://github.com/tree-software-company/DML/releases/download/${NEW_VERSION}/DML-all.jar"
-              version "${NEW_VERSION}"
               sha256 "${SHA256}"
               license "Apache-2.0"
 
