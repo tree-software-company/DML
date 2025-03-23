@@ -28,6 +28,16 @@ jobs:
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
       - run:
+          name: Upload JAR to release
+          command: |
+            # Upewnij się, że zmienne GITHUB_TOKEN oraz RELEASE_ID są ustawione w środowisku
+            curl \
+              -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/java-archive" \
+              --data-binary @build/libs/DML-all.jar \
+              "https://uploads.github.com/repos/tree-software-company/DML/releases/${RELEASE_ID}/assets?name=DML-all.jar"
+      - run:
           name: Clone and update homebrew-dml formula
           command: |
             git config --global user.name "simon04PL"
