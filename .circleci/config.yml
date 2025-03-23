@@ -38,7 +38,7 @@ jobs:
 
             SHA256=$(cat ../checksum.txt)
 
-            cat > dml.rb \<<'EOF'
+            cat > dml.rb <<'EOF'
             class Dml < Formula
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
               homepage "https://github.com/tree-software-company/dml"
@@ -49,7 +49,7 @@ jobs:
 
               def install
                 libexec.install "DML-all.jar"
-                (bin/"dml").write \<<~EOS
+                (bin/"dml").write <<~EOS
                   #!/bin/bash
                   exec java -jar "#{libexec}/DML-all.jar" "$@"
                 EOS
@@ -61,7 +61,6 @@ jobs:
             end
             EOF
 
-                        ...
             git add dml.rb
             if ! git diff --cached --quiet; then
               git commit -m "Update formula with new release"
