@@ -46,12 +46,8 @@ jobs:
             end
 
             git add dml.rb
-            if ! git diff --cached --quiet; then
-              git commit -m "Update formula with new release"
-              git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
-            else
-              echo "No changes to commit"
-            fi
+            git commit -m "Update formula with new release"
+            git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
 
 workflows:
   version: 2
