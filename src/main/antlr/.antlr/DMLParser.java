@@ -111,6 +111,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_file; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterFile(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitFile(this);
+		}
 	}
 
 	public final FileContext file() throws RecognitionException {
@@ -156,6 +164,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_statement; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterStatement(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitStatement(this);
+		}
 	}
 
 	public final StatementContext statement() throws RecognitionException {
@@ -190,6 +206,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_variableDeclaration; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterVariableDeclaration(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitVariableDeclaration(this);
+		}
 	}
 
 	public final VariableDeclarationContext variableDeclaration() throws RecognitionException {
@@ -230,6 +254,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_expression; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterExpression(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitExpression(this);
+		}
 	}
 
 	public final ExpressionContext expression() throws RecognitionException {
@@ -265,6 +297,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_additionExpression; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterAdditionExpression(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitAdditionExpression(this);
+		}
 	}
 
 	public final AdditionExpressionContext additionExpression() throws RecognitionException {
@@ -318,6 +358,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_propertyAccessExpression; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterPropertyAccessExpression(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitPropertyAccessExpression(this);
+		}
 	}
 
 	public final PropertyAccessExpressionContext propertyAccessExpression() throws RecognitionException {
@@ -377,6 +425,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_primaryExpression; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterPrimaryExpression(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitPrimaryExpression(this);
+		}
 	}
 
 	public final PrimaryExpressionContext primaryExpression() throws RecognitionException {
@@ -466,6 +522,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_listExpression; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterListExpression(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitListExpression(this);
+		}
 	}
 
 	public final ListExpressionContext listExpression() throws RecognitionException {
@@ -522,6 +586,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_mapExpression; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterMapExpression(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitMapExpression(this);
+		}
 	}
 
 	public final MapExpressionContext mapExpression() throws RecognitionException {
@@ -576,6 +648,14 @@ public class DMLParser extends Parser {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_pair; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).enterPair(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof DMLListener ) ((DMLListener)listener).exitPair(this);
+		}
 	}
 
 	public final PairContext pair() throws RecognitionException {

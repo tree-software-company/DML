@@ -13,9 +13,8 @@ repositories {
 dependencies {
     antlr("org.antlr:antlr4:4.13.1")
     implementation("org.antlr:antlr4:4.13.1")
-
+    implementation("org.yaml:snakeyaml:2.2")
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
-
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 }
 

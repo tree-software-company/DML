@@ -28,6 +28,13 @@ Think of it as a strongly-typed, comment-friendly version of JSON — built for 
 brew tap tree-software-company/dml
 brew install dml
 ```
+install the newest version:
+```bash
+brew uninstall dml
+brew untap tree-software-company/dml
+brew tap tree-software-company/dml
+brew install dml
+```
 Then you can use it globally like:
 
 ```bash
@@ -100,6 +107,10 @@ Variables: {
 | Command        | Description                        |
 |----------------|------------------------------------|
 | `dml read FILE` | Executes and interprets a `.dml` file |
+| `dml write json FILE` | Convert .dml file for .json file |
+| `dml write yaml FILE` | Convert .dml file for .yaml file |
+| `dml lint FILE` | Check if .dml file will validate |
+| `dml format FILE` | Make .dml code more beauty |
 | `dml help`     | Shows help menu                   |
 
 ---
