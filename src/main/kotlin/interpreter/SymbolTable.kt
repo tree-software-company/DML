@@ -14,4 +14,6 @@ class SymbolTable {
     fun printVariables() {
         println("Variables: $variables")
     }
+
+    fun getAll(): Map<String, Any?> = variables
 }

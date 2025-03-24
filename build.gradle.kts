@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "1.9.0"
+    kotlin("plugin.serialization") version "1.9.0"
     application
     id("com.github.johnrengelman.shadow") version "8.1.1"
     id("antlr")
@@ -12,7 +13,10 @@ repositories {
 dependencies {
     antlr("org.antlr:antlr4:4.13.1")
     implementation("org.antlr:antlr4:4.13.1")
+
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 }
 
 kotlin {
@@ -22,6 +26,7 @@ kotlin {
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi"
     }
 }
 
@@ -55,8 +60,4 @@ tasks.shadowJar {
     manifest {
         attributes["Main-Class"] = "cli.CliKt"
     }
-}
-
-tasks.shadowJar {
-    archiveFileName.set("DML-all.jar")
 }

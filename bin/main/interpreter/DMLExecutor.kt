@@ -119,4 +119,9 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         visit(tree)
         symbolTable.printVariables()
     }
+
+    fun getSymbolTable(): Map<String, Any?> {
+        return symbolTable.getAll()
+    }
+    
 }
