@@ -139,7 +139,35 @@ fun main(args: Array<String>) {
             println("❌ Format failed: ${e.message}")
         }
         return
-    }    
+    }  
+    
+    if (command == "repl") {
+        if (args.size != 3) {
+            println("Usage: dml repl '<expression>' <file>")
+            return
+        }
+    
+        val expression = args[1]
+        val fileName = args[2]
+        val file = File(fileName)
+    
+        try {
+            if (!file.exists()) {
+                file.createNewFile()
+            }
+    
+            val addNewLine = file.readText().isNotBlank()
+            val toWrite = (if (addNewLine) "\n" else "") + expression.trim()
+    
+            file.appendText(toWrite)
+            println("✅ Expression written to ${file.name}")
+        } catch (e: Exception) {
+            println("❌ Failed to write expression: ${e.message}")
+        }
+    
+        return
+    }
+    
 
     println("Error: Unknown command '$command'. Type 'dml help' for available commands.")
 }
@@ -150,11 +178,12 @@ fun printHelp() {
         Usage: dml <command> [file]
         
         Commands:
-          read <file>       - Read and execute a .dml file
-          write json <file> - Convert .dml file for .json file
-          write yaml <file> - Convert .dml file for .yaml file
-          lint <file>       - Check if .dml file will validate
-          format <file>     - Make .dml code more beauty
-          help              - Show available commands
+          read <file>                   - Read and execute a .dml file
+          write json <file>             - Convert .dml file for .json file
+          write yaml <file>             - Convert .dml file for .yaml file
+          lint <file>                   - Check if .dml file will validate
+          format <file>                 - Make .dml code more beauty
+          dml repl '<extension>' <file> - Create code from terminal
+          help                          - Show available commands
     """.trimIndent())
 }
