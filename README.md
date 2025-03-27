@@ -111,8 +111,8 @@ Variables: {
 | `dml write yaml FILE` | Convert .dml file for .yaml file |
 | `dml lint FILE` | Check if .dml file will validate |
 | `dml format FILE` | Make .dml code more beauty |
-| `dml help` | Shows help menu |
 | `dml repl 'EXTENSION' FILE` | Create code from terminal|
+| `dml help` | Shows help menu |
 
 ---
 
