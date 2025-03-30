@@ -66,8 +66,15 @@ class DMLInterpreter {
     }    
 
     fun validate(code: String) {
+        val openIndex = code.indexOf("/*")
+        val closeIndex = code.indexOf("*/")
+    
+        if (openIndex != -1 && (closeIndex == -1 || closeIndex < openIndex)) {
+            throw IllegalArgumentException("Unclosed block comment (/* ... */)")
+        }
+        
         evaluate(code)
-    }
+    }    
 
     private fun buildDmlString(map: Map<String, Any?>, indent: String = ""): String {
         return map.entries.joinToString("\n") { (key, value) ->

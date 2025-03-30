@@ -16,17 +16,15 @@ additionExpression: propertyAccessExpression ( '+' propertyAccessExpression )* ;
 
 propertyAccessExpression: primaryExpression ( '.' IDENTIFIER )* ;
 
-LINE_COMMENT: '//' ~[\r\n]* -> skip;
-BLOCK_COMMENT: '/*' .*? '*/' -> skip;
-
-primaryExpression: STRING
-                  | NUMBER
-                  | BOOLEAN
-                  | IDENTIFIER
-                  | listExpression
-                  | mapExpression
-                  | '(' expression ')'
-                  ;
+primaryExpression:
+      STRING
+    | NUMBER
+    | BOOLEAN
+    | IDENTIFIER
+    | listExpression
+    | mapExpression
+    | '(' expression ')'
+    ;
 
 listExpression: '[' expression (',' expression)* ']' ;
 
@@ -36,8 +34,11 @@ pair: STRING ':' expression ;
 
 TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map';
 
-STRING: '"' .*? '"';
+STRING: '"' ( ~["\\] | '\\' . )* '"';
 NUMBER: [0-9]+;
 BOOLEAN: 'true' | 'false';
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
+
 WS: [ \t\r\n]+ -> skip;
+LINE_COMMENT: '//' ~[\r\n]* -> skip;
+BLOCK_COMMENT: '/*' .*? '*/' -> skip;
