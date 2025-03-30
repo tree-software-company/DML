@@ -16,9 +16,6 @@ additionExpression: propertyAccessExpression ( '+' propertyAccessExpression )* ;
 
 propertyAccessExpression: primaryExpression ( '.' IDENTIFIER )* ;
 
-LINE_COMMENT: '//' ~[\r\n]* -> skip;
-BLOCK_COMMENT: '/*' .*? '*/' -> skip;
-
 primaryExpression: STRING
                   | NUMBER
                   | BOOLEAN
