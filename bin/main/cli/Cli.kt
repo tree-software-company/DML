@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
         return
     }
 
-    val command = args[0]
+    val command = args[0] 
 
     when (command) {
         "--help", "-h" -> {
@@ -34,6 +34,7 @@ fun main(args: Array<String>) {
                 println("Error: File '$fileName' does not exist.")
                 return
             }
+
 
             val interpreter = DMLInterpreter()
 
@@ -214,6 +215,7 @@ fun main(args: Array<String>) {
 
             return
         }
+
 
         else -> println("Error: Unknown command '$command'. Type 'dml -h' for help.")
     }
