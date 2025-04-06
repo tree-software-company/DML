@@ -1,6 +1,8 @@
 package cli
 
 import interpreter.DMLInterpreter
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.Json
 import java.io.File
 
 fun main(args: Array<String>) {
@@ -10,35 +12,91 @@ fun main(args: Array<String>) {
         return
     }
 
-    val command = args[0]
+    val command = args[0] 
 
     if (command == "help") {
         printHelp()
         return
     }
 
-    if (command == "read") {
+    if (command == "read" && args.size >= 3 && args[1] == "dml") {
         if (args.size < 2) {
             println("Error: No file specified.")
             return
         }
-        val fileName = args[1]
+        val fileName = args[2]
         val file = File(fileName)
-
+    
         if (!file.exists()) {
             println("Error: File '$fileName' does not exist.")
             return
         }
-
+    
         val code = file.readText()
         try {
             val interpreter = DMLInterpreter()
-            interpreter.execute(code)
+            val result = interpreter.execute(code)
         } catch (e: Exception) {
             println("Runtime Error: ${e.message}")
         }
         return
     }
+
+    if (command == "read" && args.size >= 3 && args[1] == "json") {
+        val fileName = args[2]
+        val file = File(fileName)
+    
+        if (!file.exists()) {
+            println("Error: File '$fileName' does not exist.")
+            return
+        }
+    
+        try {
+            val jsonText = file.readText()
+            val jsonElement = Json.parseToJsonElement(jsonText)
+            if (jsonElement !is JsonObject) {
+                throw IllegalArgumentException("Top-level JSON must be an object")
+            }
+            val interpreter = DMLInterpreter()
+            val jsonMap = interpreter.convertJsonToMap(jsonElement)
+            val dmlCode = interpreter.buildDmlString(jsonMap)
+            val outputFileName = fileName.replaceAfterLast('.', "dml")
+    
+            File(outputFileName).writeText(dmlCode)
+            println("✅ JSON converted to $outputFileName")
+        } catch (e: Exception) {
+            println("❌ Failed to convert JSON to DML: ${e.message}")
+        }
+    
+        return
+    } 
+
+    if (command == "read" && args.size >= 3 && args[1] == "yaml") {
+        val fileName = args[2]
+        val file = File(fileName)
+    
+        if (!file.exists()) {
+            println("Error: File '$fileName' does not exist.")
+            return
+        }
+    
+        try {
+            val yamlText = file.readText()
+            val interpreter = DMLInterpreter()
+            val yamlMap = interpreter.convertYamlToMap(yamlText)
+    
+            val dmlCode = interpreter.buildDmlString(yamlMap)
+            val outputFileName = fileName.replaceAfterLast('.', "dml")
+    
+            File(outputFileName).writeText(dmlCode)
+            println("✅ YAML converted to $outputFileName")
+        } catch (e: Exception) {
+            println("❌ Failed to convert YAML to DML: ${e.message}")
+        }
+    
+        return
+    }
+    
 
     if (command == "write" && args.size >= 3 && args[1] == "json") {
         val fileName = args[2]
@@ -168,6 +226,80 @@ fun main(args: Array<String>) {
         return
     }
     
+    if (command == "write" && args.size >= 3 && args[1] == "xml") {
+        val fileName = args[2]
+        val file = File(fileName)
+    
+        if (!file.exists()) {
+            println("Error: File '$fileName' does not exist.")
+            return
+        }
+    
+        val code = file.readText()
+        try {
+            val interpreter = DMLInterpreter()
+            val result = interpreter.evaluate(code)
+    
+            val xmlOutput = interpreter.toXml(result)
+            val outputFileName = fileName.replaceAfterLast('.', "xml")
+            File(outputFileName).writeText(xmlOutput)
+    
+            println("✅ File saved as $outputFileName")
+        } catch (e: Exception) {
+            println("Runtime Error: ${e.message}")
+        }
+        return
+    }
+    
+    if (command == "write" && args.size >= 3 && args[1] == "properties") {
+        val fileName = args[2]
+        val file = File(fileName)
+    
+        if (!file.exists()) {
+            println("Error: File '$fileName' does not exist.")
+            return
+        }
+    
+        val code = file.readText()
+        try {
+            val interpreter = DMLInterpreter()
+            val result = interpreter.evaluate(code)
+    
+            val propertiesOutput = interpreter.toProperties(result)
+            val outputFileName = fileName.replaceAfterLast('.', "properties")
+            File(outputFileName).writeText(propertiesOutput)
+    
+            println("✅ File saved as $outputFileName")
+        } catch (e: Exception) {
+            println("Runtime Error: ${e.message}")
+        }
+        return
+    }
+    
+    if (command == "write" && args.size >= 3 && args[1] == "plist") {
+        val fileName = args[2]
+        val file = File(fileName)
+    
+        if (!file.exists()) {
+            println("Error: File '$fileName' does not exist.")
+            return
+        }
+    
+        val code = file.readText()
+        try {
+            val interpreter = DMLInterpreter()
+            val result = interpreter.evaluate(code)
+    
+            val plistOutput = interpreter.toPlist(result)
+            val outputFileName = fileName.replaceAfterLast('.', "plist")
+            File(outputFileName).writeText(plistOutput)
+    
+            println("✅ File saved as $outputFileName")
+        } catch (e: Exception) {
+            println("Runtime Error: ${e.message}")
+        }
+        return
+    }  
 
     println("Error: Unknown command '$command'. Type 'dml help' for available commands.")
 }
@@ -178,9 +310,13 @@ fun printHelp() {
         Usage: dml <command> [file]
         
         Commands:
-          read <file>                   - Read and execute a .dml file
+          read dml <file>               - Read and execute a .dml file
+          read json <file>              - Convert .json file for .dml file
           write json <file>             - Convert .dml file for .json file
           write yaml <file>             - Convert .dml file for .yaml file
+          write xml <file>              - Convert .dml file for .xml file
+          write properties <file>       - Convert .dml file for .properties file
+          write plist <file>            - Convert .dml file for .plist file
           lint <file>                   - Check if .dml file will validate
           format <file>                 - Make .dml code more beauty
           dml repl '<extension>' <file> - Create code from terminal

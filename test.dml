@@ -1,3 +1,4 @@
+//test
 map user = { "name": "Szymon" };
 string message = "Hello, " + user.name;
 string users = "Szymon";

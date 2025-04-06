@@ -21,7 +21,7 @@ public class DMLParser extends Parser {
 	public static final int
 		T__0=1, T__1=2, T__2=3, T__3=4, T__4=5, T__5=6, T__6=7, T__7=8, T__8=9, 
 		T__9=10, T__10=11, T__11=12, TYPE=13, STRING=14, NUMBER=15, BOOLEAN=16, 
-		IDENTIFIER=17, WS=18;
+		IDENTIFIER=17, WS=18, LINE_COMMENT=19, BLOCK_COMMENT=20;
 	public static final int
 		RULE_file = 0, RULE_statement = 1, RULE_variableDeclaration = 2, RULE_expression = 3, 
 		RULE_additionExpression = 4, RULE_propertyAccessExpression = 5, RULE_primaryExpression = 6, 
@@ -45,7 +45,8 @@ public class DMLParser extends Parser {
 	private static String[] makeSymbolicNames() {
 		return new String[] {
 			null, null, null, null, null, null, null, null, null, null, null, null, 
-			null, "TYPE", "STRING", "NUMBER", "BOOLEAN", "IDENTIFIER", "WS"
+			null, "TYPE", "STRING", "NUMBER", "BOOLEAN", "IDENTIFIER", "WS", "LINE_COMMENT", 
+			"BLOCK_COMMENT"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -604,7 +605,7 @@ public class DMLParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\u0004\u0001\u0012Z\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
+		"\u0004\u0001\u0014Z\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
 		"\u0002\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0002"+
 		"\u0005\u0007\u0005\u0002\u0006\u0007\u0006\u0002\u0007\u0007\u0007\u0002"+
 		"\b\u0007\b\u0002\t\u0007\t\u0001\u0000\u0004\u0000\u0016\b\u0000\u000b"+

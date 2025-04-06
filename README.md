@@ -106,9 +106,13 @@ Variables: {
 
 | Command        | Description                        |
 |----------------|------------------------------------|
-| `dml read FILE` | Executes and interprets a `.dml` file |
+| `dml read dml FILE` | Executes and interprets a .dml file |
+| `dml read json FILE` | Convert .json file for .dml file |
 | `dml write json FILE` | Convert .dml file for .json file |
 | `dml write yaml FILE` | Convert .dml file for .yaml file |
+| `dml write xml FILE` | Convert .dml file for .xml file |
+| `dml write properties FILE` | Convert .dml file for .properties file |
+| `dml write plist FILE` | Convert .dml file for .plist file |
 | `dml lint FILE` | Check if .dml file will validate |
 | `dml format FILE` | Make .dml code more beauty |
 | `dml repl 'EXTENSION' FILE` | Create code from terminal|
