@@ -1,4 +1,6 @@
-//test
-map user = { "name": "Szymon" };
-string message = "Hello, " + user.name;
+map user = {
+  "name": "Szymon"
+};
+string message = "Hello, Szymon";
 string users = "Szymon";
+number version = 1.0;
