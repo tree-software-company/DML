@@ -11,15 +11,19 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
         val value = visit(ctx.expression()) ?: error("Runtime Error: Variable '$name' has no value.")
-    
+
         when (type) {
             "string" -> symbolTable.setVariable(name, value.toString())
             "number" -> {
-                if (value is Number) {
-                    symbolTable.setVariable(name, value.toInt())
-                } else {
-                    error("Type Error: Variable '$name' must be a number, got '${value::class.simpleName}'.")
+                val parsed = when (value) {
+                    is Number -> value
+                    is String -> {
+                        value.toIntOrNull() ?: value.toDoubleOrNull()
+                        ?: error("Value '$value' is not a valid number.")
+                    }
+                    else -> error("Type Error: Variable '$name' must be a number, got '${value::class.simpleName}'.")
                 }
+                symbolTable.setVariable(name, parsed)
             }
             "boolean" -> {
                 if (value is Boolean) {
@@ -44,10 +48,9 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
             }
             else -> error("Syntax Error: Unknown type '$type' for variable '$name'.")
         }
-    
+
         return null
     }
-    
 
     override fun visitExpression(ctx: DMLParser.ExpressionContext): Any? {
         return visit(ctx.additionExpression())
@@ -84,7 +87,8 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
             return ctx.STRING().text.removeSurrounding("\"")
         }
         if (ctx.NUMBER() != null) {
-            return ctx.NUMBER().text.toInt()
+            val numText = ctx.NUMBER().text
+            return if (numText.contains('.')) numText.toDouble() else numText.toInt()
         }
         if (ctx.BOOLEAN() != null) {
             return ctx.BOOLEAN().text.toBoolean()

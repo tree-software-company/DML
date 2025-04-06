@@ -35,7 +35,7 @@ pair: STRING ':' expression ;
 TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map';
 
 STRING: '"' ( ~["\\] | '\\' . )* '"';
-NUMBER: [0-9]+;
+NUMBER: [0-9]+ ('.' [0-9]+)?;
 BOOLEAN: 'true' | 'false';
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
 

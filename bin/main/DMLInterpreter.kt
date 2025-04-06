@@ -266,5 +266,76 @@ class DMLInterpreter {
         @Suppress("UNCHECKED_CAST")
         return loaded as Map<String, Any?>
     }    
-     
+
+    fun convertXmlToMap(xmlText: String): Map<String, Any?> {
+        val dbFactory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        val dBuilder = dbFactory.newDocumentBuilder()
+        val doc = dBuilder.parse(xmlText.byteInputStream())
+        doc.documentElement.normalize()
+    
+        val root = doc.documentElement
+        if (root.nodeName != "dml") {
+            error("Root tag must be <dml>")
+        }
+    
+        val result = mutableMapOf<String, Any?>()
+        val nodes = root.childNodes
+        for (i in 0 until nodes.length) {
+            val node = nodes.item(i)
+            if (node.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
+                val key = node.nodeName
+                val value = parseXmlNode(node)
+                result[key] = value
+            }
+        }
+    
+        return result
+    }
+    
+    private fun parseXmlNode(node: org.w3c.dom.Node): Any? {
+        val children = node.childNodes
+        if (children.length == 1 && children.item(0).nodeType == org.w3c.dom.Node.TEXT_NODE) {
+            val raw = children.item(0).textContent.trim()
+            return when {
+                raw.equals("true", ignoreCase = true) -> true
+                raw.equals("false", ignoreCase = true) -> false
+                raw.toIntOrNull() != null -> raw.toInt()
+                raw.toDoubleOrNull() != null -> raw.toDouble()
+                else -> raw
+            }
+        }
+    
+        if (node.nodeName == "array" || node.nodeName == "list" || allChildrenNamed(node, "item")) {
+            val list = mutableListOf<Any?>()
+            for (i in 0 until children.length) {
+                val item = children.item(i)
+                if (item.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
+                    list.add(parseXmlNode(item))
+                }
+            }
+            return list
+        }
+    
+        val map = mutableMapOf<String, Any?>()
+        for (i in 0 until children.length) {
+            val child = children.item(i)
+            if (child.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
+                val key = child.nodeName
+                val value = parseXmlNode(child)
+                map[key] = value
+            }
+        }
+        return map
+    }
+    
+    private fun allChildrenNamed(node: org.w3c.dom.Node, name: String): Boolean {
+        val children = node.childNodes
+        for (i in 0 until children.length) {
+            val n = children.item(i)
+            if (n.nodeType == org.w3c.dom.Node.ELEMENT_NODE && n.nodeName != name) {
+                return false
+            }
+        }
+        return true
+    }
 }
