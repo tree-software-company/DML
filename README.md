@@ -38,7 +38,7 @@ brew install dml
 Then you can use it globally like:
 
 ```bash
-dml read test.dml
+dml -r dml test.dml
 ```
 > ℹ️ The Homebrew formula will download the `.jar` from GitHub Releases automatically.
 
@@ -59,7 +59,7 @@ build/libs/DML-all.jar
 ```
 #### 2. Run the CLI
 ```bash
-java -jar build/libs/DML-all.jar read test.dml
+java -jar build/libs/DML-all.jar -r dml test.dml
 ```
 #### 3. (Optional) Make it global
 
@@ -106,17 +106,18 @@ Variables: {
 
 | Command        | Description                        |
 |----------------|------------------------------------|
-| `dml read dml FILE` | Executes and interprets a .dml file |
-| `dml read json FILE` | Convert .json file for .dml file |
-| `dml write json FILE` | Convert .dml file for .json file |
-| `dml write yaml FILE` | Convert .dml file for .yaml file |
-| `dml write xml FILE` | Convert .dml file for .xml file |
-| `dml write properties FILE` | Convert .dml file for .properties file |
-| `dml write plist FILE` | Convert .dml file for .plist file |
-| `dml lint FILE` | Check if .dml file will validate |
-| `dml format FILE` | Make .dml code more beauty |
-| `dml repl 'EXTENSION' FILE` | Create code from terminal|
-| `dml help` | Shows help menu |
+| `dml -r dml FILE` | Executes and interprets a .dml file |
+| `dml -r json FILE` | Convert .json file for .dml file |
+| `dml -w json FILE` | Convert .dml file for .json file |
+| `dml -w yaml FILE` | Convert .dml file for .yaml file |
+| `dml -w xml FILE` | Convert .dml file for .xml file |
+| `dml -w properties FILE` | Convert .dml file for .properties file |
+| `dml -w plist FILE` | Convert .dml file for .plist file |
+| `dml -l FILE` | Check if .dml file will validate |
+| `dml -f FILE` | Make .dml code more beauty |
+| `dml -e 'EXTENSION' FILE` | Create code from terminal|
+| `dml -h` or `dml --help`| Shows help menu |
+| `dml -v` or `dml --version`| Shows lang version |
 
 ---
 

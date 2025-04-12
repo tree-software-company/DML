@@ -10,47 +10,27 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
     override fun visitVariableDeclaration(ctx: DMLParser.VariableDeclarationContext): Any? {
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
+        val isPrivate = ctx.modifier() != null
         val value = visit(ctx.expression()) ?: error("Runtime Error: Variable '$name' has no value.")
-
-        when (type) {
-            "string" -> symbolTable.setVariable(name, value.toString())
-            "number" -> {
-                val parsed = when (value) {
-                    is Number -> value
-                    is String -> {
-                        value.toIntOrNull() ?: value.toDoubleOrNull()
-                        ?: error("Value '$value' is not a valid number.")
-                    }
-                    else -> error("Type Error: Variable '$name' must be a number, got '${value::class.simpleName}'.")
-                }
-                symbolTable.setVariable(name, parsed)
+    
+        val parsedValue = when (type) {
+            "string" -> value.toString()
+            "number" -> when (value) {
+                is Number -> value
+                is String -> value.toIntOrNull() ?: value.toDoubleOrNull()
+                    ?: error("Value '$value' is not a valid number.")
+                else -> error("Type Error: '$name' must be a number, got '${value::class.simpleName}'.")
             }
-            "boolean" -> {
-                if (value is Boolean) {
-                    symbolTable.setVariable(name, value)
-                } else {
-                    error("Type Error: Variable '$name' must be a boolean, got '${value::class.simpleName}'.")
-                }
-            }
-            "list" -> {
-                if (value is List<*>) {
-                    symbolTable.setVariable(name, value)
-                } else {
-                    error("Type Error: Variable '$name' must be a list, got '${value::class.simpleName}'.")
-                }
-            }
-            "map" -> {
-                if (value is Map<*, *>) {
-                    symbolTable.setVariable(name, value)
-                } else {
-                    error("Type Error: Variable '$name' must be a map, got '${value::class.simpleName}'.")
-                }
-            }
-            else -> error("Syntax Error: Unknown type '$type' for variable '$name'.")
+            "boolean" -> if (value is Boolean) value else error("Type Error: '$name' must be boolean.")
+            "list" -> if (value is List<*>) value else error("Type Error: '$name' must be a list.")
+            "map" -> if (value is Map<*, *>) value else error("Type Error: '$name' must be a map.")
+            else -> error("Syntax Error: Unknown type '$type' for '$name'.")
         }
-
+    
+        symbolTable.setVariable(name, parsedValue, isPrivate)
         return null
     }
+    
 
     override fun visitExpression(ctx: DMLParser.ExpressionContext): Any? {
         return visit(ctx.additionExpression())
@@ -128,4 +108,8 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         return symbolTable.getAll()
     }
     
+    fun getAllRaw(): Map<String, Any?> {
+        return symbolTable.getAllRaw()
+    }    
+
 }

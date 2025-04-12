@@ -20,6 +20,11 @@ fun main(args: Array<String>) {
             return
         }
 
+        "--version", "-v" -> {
+            println("Current version is 0.5.0")
+            return
+        }
+
         "-r" -> {
             if (args.size < 3) {
                 println("Usage: dml -r <dml|json|yaml> <file>")
@@ -216,7 +221,6 @@ fun main(args: Array<String>) {
             return
         }
 
-
         else -> println("Error: Unknown command '$command'. Type 'dml -h' for help.")
     }
 }
@@ -239,5 +243,6 @@ fun printHelp() {
           -f <file>                - Format .dml file
           -e '<expression>' <file> - Add DML expression to file
           -h, --help               - Show this help
+          -v, --version            - Show lang version
     """.trimIndent())
 }

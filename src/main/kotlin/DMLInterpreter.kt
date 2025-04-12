@@ -23,12 +23,12 @@ class DMLInterpreter {
         val tokens = CommonTokenStream(lexer)
         val parser = DMLParser(tokens)
         val tree = parser.file()
-
+    
         val executor = DMLExecutor()
         executor.execute(tree)
-        return executor.getSymbolTable()
+        return executor.getAllRaw()
     }
-
+    
     fun toJson(map: Map<String, Any?>): String {
         val jsonElement = convertToJsonElement(map)
         return Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), jsonElement)

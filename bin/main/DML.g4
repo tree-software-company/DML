@@ -8,7 +8,9 @@ file: statement+;
 
 statement: variableDeclaration;
 
-variableDeclaration: TYPE IDENTIFIER '=' expression ';';
+variableDeclaration: modifier? TYPE IDENTIFIER '=' expression ';';
+
+modifier: 'private';
 
 expression: additionExpression;
 
