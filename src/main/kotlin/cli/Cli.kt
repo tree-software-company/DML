@@ -25,6 +25,29 @@ fun main(args: Array<String>) {
             return
         }
 
+        "-u", "update" -> {
+            try {
+                println("🔄 Updating DML via Homebrew...")
+                val commands = listOf(
+                    "brew uninstall dml",
+                    "brew untap tree-software-company/dml",
+                    "brew tap tree-software-company/dml",
+                    "brew install dml"
+                )
+                for (cmd in commands) {
+                    println("→ $cmd")
+                    val process = ProcessBuilder(*cmd.split(" ").toTypedArray())
+                        .inheritIO()
+                        .start()
+                    process.waitFor()
+                }
+                println("✅ DML updated successfully.")
+            } catch (e: Exception) {
+                println("❌ Failed to update DML: ${e.message}")
+            }
+            return
+        }
+
         "-r" -> {
             if (args.size < 3) {
                 println("Usage: dml -r <dml|json|yaml> <file>")
@@ -97,6 +120,31 @@ fun main(args: Array<String>) {
                     }
                 }
 
+                "plist" -> {
+                    try {
+                        val plistText = file.readText()
+                        val plistMap = interpreter.convertPlistToMap(plistText)
+                        val dmlCode = interpreter.buildDmlString(plistMap)
+                        val outputFileName = file.nameWithoutExtension + ".dml"
+                        File(outputFileName).writeText(dmlCode)
+                        println("✅ PLIST converted to $outputFileName")
+                    } catch (e: Exception) {
+                        println("❌ Failed to convert PLIST to DML: ${e.message}")
+                    }
+                }
+
+                "properties" -> {
+                    try {
+                        val text = file.readText()
+                        val map = interpreter.convertPropertiesToMap(text)
+                        val dmlCode = interpreter.buildDmlString(map)
+                        val outputFileName = file.nameWithoutExtension + ".dml"
+                        File(outputFileName).writeText(dmlCode)
+                        println("✅ Properties converted to $outputFileName")
+                    } catch (e: Exception) {
+                        println("❌ Failed to convert Properties to DML: ${e.message}")
+                    }
+                }
 
                 else -> println("Unknown read mode '$mode'")
             }
@@ -221,6 +269,45 @@ fun main(args: Array<String>) {
             return
         }
 
+        "-n" -> {
+            if (args.size < 2) {
+                println("Error: No file name provided.")
+                return
+            }
+
+            val fileName = args[1]
+            val file = File(fileName)
+
+            if (file.exists()) {
+                println("❌ File '$fileName' already exists.")
+                return
+            }
+
+            val template = """ 
+                string name = "My Project";
+                number version = 1.0;
+                boolean active = true;
+
+                list tags = ["dml", "template"];
+                
+                map meta = {
+                "author": "Your Name",
+                "created": "2025-04-12"
+                };
+            """.trimIndent()
+
+            try {
+                file.writeText(template)
+                println("✅ New DML file created: $fileName")
+            } catch (e: Exception) {
+                println("❌ Failed to create file: ${e.message}")
+            }
+
+            return
+        }
+
+        
+
         else -> println("Error: Unknown command '$command'. Type 'dml -h' for help.")
     }
 }
@@ -234,6 +321,9 @@ fun printHelp() {
           -r dml <file>            - Read and execute a .dml file
           -r json <file>           - Convert .json to .dml
           -r yaml <file>           - Convert .yaml to .dml
+          -r xml <file>            - Convert .xml to .dml
+          -r plist <file>          - Convert .plist to .dml
+          -r properties <file>     - Convert .properties to .dml
           -w json <file>           - Convert .dml to .json
           -w yaml <file>           - Convert .dml to .yaml
           -w xml <file>            - Convert .dml to .xml
@@ -242,7 +332,9 @@ fun printHelp() {
           -l <file>                - Lint .dml file
           -f <file>                - Format .dml file
           -e '<expression>' <file> - Add DML expression to file
+          -n <file>                - Create a new DML file with a template
           -h, --help               - Show this help
           -v, --version            - Show lang version
+          -u, update               - Update DML via Homebrew
     """.trimIndent())
 }
