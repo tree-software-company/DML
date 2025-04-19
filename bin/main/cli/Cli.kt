@@ -215,8 +215,6 @@ fun main(args: Array<String>) {
 
             return
         }
-
-
         else -> println("Error: Unknown command '$command'. Type 'dml -h' for help.")
     }
 }

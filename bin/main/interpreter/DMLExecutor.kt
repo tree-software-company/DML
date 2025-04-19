@@ -46,6 +46,49 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
                     error("Type Error: Variable '$name' must be a map, got '${value::class.simpleName}'.")
                 }
             }
+            "date" -> {
+                val parsed = when (value) {
+                    is String -> java.time.LocalDate.parse(value)
+                    is java.time.LocalDate -> value
+                    is java.time.LocalDateTime -> value.toLocalDate()
+                    else -> error("Type Error: Variable '$name' must be a date string in format yyyy-MM-dd.")
+                }
+
+                symbolTable.setVariable(name, parsed.toString())
+                return parsed.toString()
+            }
+            "datetime" -> {
+                val str = when (value) {
+                    is String -> value
+                    is java.time.LocalDateTime -> value.toString()
+                    else -> error("Type Error: Variable '$name' must be a datetime string in format yyyy-MM-dd'T'HH:mm.")
+                }
+
+                try {
+                    val parsed = java.time.LocalDateTime.parse(str)
+                    symbolTable.setVariable(name, parsed.toString())
+                    parsed.toString()
+                } catch (e: Exception) {
+                    error("Invalid datetime format for variable '$name'. Expected yyyy-MM-dd'T'HH:mm.")
+                }
+            }
+            "time" -> {
+                val str = when (value) {
+                    is String -> value
+                    is java.time.LocalDateTime -> value.toLocalTime().toString()
+                    is java.time.LocalTime -> value.toString()
+                    else -> error("Type Error: Variable '$name' must be a time string in format HH:mm.")
+                }
+
+                try {
+                    val parsed = java.time.LocalTime.parse(str)
+                    symbolTable.setVariable(name, parsed.toString())
+                    parsed.toString()
+                } catch (e: Exception) {
+                    error("Invalid time format for variable '$name'. Expected HH:mm.")
+                }
+            }
+
             else -> error("Syntax Error: Unknown type '$type' for variable '$name'.")
         }
 
@@ -83,6 +126,7 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
     }
 
     override fun visitPrimaryExpression(ctx: DMLParser.PrimaryExpressionContext): Any? {
+    
         if (ctx.STRING() != null) {
             return ctx.STRING().text.removeSurrounding("\"")
         }
@@ -102,8 +146,34 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         if (ctx.mapExpression() != null) {
             return visit(ctx.mapExpression())
         }
+
+        if (ctx.text.startsWith("now(")) {
+            val text = ctx.text
+            val regex = """now\("(.*?)"\)""".toRegex()
+            val offset = regex.find(text)?.groupValues?.get(1)
+    
+            var result = java.time.LocalDateTime.now()
+    
+            if (offset != null) {
+    
+                val match = """([+-]\d+)([dhm])""".toRegex().matchEntire(offset)
+                    ?: error("Invalid offset format in now(). Use e.g. now(\"+1d\"), now(\"-2h\")")
+    
+                val (amountStr, unit) = match.destructured
+                val amount = amountStr.toInt()
+    
+                result = when (unit) {
+                    "d" -> result.plusDays(amount.toLong())
+                    "h" -> result.plusHours(amount.toLong())
+                    "m" -> result.plusMinutes(amount.toLong())
+                    else -> error("Unsupported unit '$unit'")
+                }
+            }
+            return result
+        }
+    
         return if (ctx.expression() != null) visit(ctx.expression()) else super.visitPrimaryExpression(ctx)
-    }
+    }    
 
     override fun visitListExpression(ctx: DMLParser.ListExpressionContext): List<Any> {
         return ctx.expression().map { visit(it) ?: "null" }
@@ -118,6 +188,28 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         }
         return map
     }
+
+    override fun visitNowFunction(ctx: DMLParser.NowFunctionContext): Any {
+        val offsetArg = ctx.STRING()?.text?.removeSurrounding("\"")
+        var result = java.time.LocalDateTime.now()
+    
+        if (offsetArg != null) {
+            val match = """([+-]\d+)([dhm])""".toRegex().matchEntire(offsetArg)
+                ?: error("Invalid offset format in now(). Use e.g. now(\"+1d\")")
+    
+            val (amountStr, unit) = match.destructured
+            val amount = amountStr.toInt()
+    
+            result = when (unit) {
+                "d" -> result.plusDays(amount.toLong())
+                "h" -> result.plusHours(amount.toLong())
+                "m" -> result.plusMinutes(amount.toLong())
+                else -> error("Unsupported unit '$unit'")
+            }
+        }
+        return result
+    }
+    
 
     fun execute(tree: ParseTree) {
         visit(tree)

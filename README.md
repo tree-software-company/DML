@@ -8,8 +8,9 @@ Think of it as a strongly-typed, comment-friendly version of JSON — built for 
 
 ## 📦 Features
 
-- ✅ Basic types: `string`, `number`, `boolean`, `list`, `map`
+- ✅ Basic types: `string`, `number`, `boolean`, `list`, `map`, `date`, `datetime`
 - ✅ Arithmetic operations (e.g. `number age = 20 + 5`)
+- ✅ Function: `now()` with pssibility to add and subtraction dates `d` - day; `h` - hour;`m` - minutes (e.g. `date tomorrow = now("+1d");`)
 - ✅ Nested structures (e.g. `event.user.name`)
 - ✅ List & Map literals
 - ✅ Type checking with error reporting
