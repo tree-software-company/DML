@@ -5,8 +5,8 @@ jobs:
     docker:
       - image: cimg/openjdk:17.0
     environment:
-      NEW_VERSION: "0.4.2"
-      SHA256: "17f8cb7592b39657d0233babcd42ec3594ebbcf92ab25458b7e0f1a59dd81b4a"
+      NEW_VERSION: "0.5.0"
+      SHA256: "642dc7452057612840beceb8dc72c39d228669c61ff6ade6b8a8886b912f8f2a"
     steps:
       - checkout
       - run:
@@ -19,10 +19,10 @@ jobs:
           command: |
             git config --global user.name "simon04PL"
             git config --global user.email "szymon.msa@gmail.com"
-            
+
             git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml 
-            
+
             cat > dml.rb \<<EOF
             class Dml < Formula
               desc "Custom DSL for data definition like JSON, with Kotlin & ANTLR"
@@ -31,7 +31,7 @@ jobs:
               version "${NEW_VERSION}"
               sha256 "${SHA256}"
               license "Apache-2.0"
-            
+
               def install
                 libexec.install "DML-all.jar"
                 (bin/"dml").write \<<~EOS
@@ -39,7 +39,7 @@ jobs:
                   exec java -jar "#{libexec}/DML-all.jar" "\$@"
                 EOS
               end
-            
+
               test do
                 assert_match "DML Command Line Interface", shell_output("\#{bin}/dml help")
               end
