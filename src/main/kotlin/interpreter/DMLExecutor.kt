@@ -7,44 +7,53 @@ import parser.DMLParser
 class DMLExecutor : DMLBaseVisitor<Any?>() {
     private val symbolTable = SymbolTable()
 
+    private val classes = mutableMapOf<String, Map<String, String>>()
+
     override fun visitVariableDeclaration(ctx: DMLParser.VariableDeclarationContext): Any? {
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
+        val isPrivate = ctx.modifier() != null
         val value = visit(ctx.expression()) ?: error("Runtime Error: Variable '$name' has no value.")
-
-        when (type) {
-            "string" -> symbolTable.setVariable(name, value.toString())
-            "number" -> {
-                val parsed = when (value) {
-                    is Number -> value
-                    is String -> {
-                        value.toIntOrNull() ?: value.toDoubleOrNull()
-                        ?: error("Value '$value' is not a valid number.")
-                    }
-                    else -> error("Type Error: Variable '$name' must be a number, got '${value::class.simpleName}'.")
-                }
-                symbolTable.setVariable(name, parsed)
+    
+        val parsedValue = when (type) {
+            "string" -> value.toString()
+            "number" -> when (value) {
+                is Number -> value
+                is String -> value.toIntOrNull() ?: value.toDoubleOrNull()
+                    ?: error("Value '$value' is not a valid number.")
+                else -> error("Type Error: '$name' must be a number, got '${value::class.simpleName}'.")
             }
-            "boolean" -> {
-                if (value is Boolean) {
-                    symbolTable.setVariable(name, value)
-                } else {
-                    error("Type Error: Variable '$name' must be a boolean, got '${value::class.simpleName}'.")
+            "boolean" -> if (value is Boolean) value else error("Type Error: '$name' must be boolean.")
+            "list" -> if (value is List<*>) value else error("Type Error: '$name' must be a list.")
+            "map" -> if (value is Map<*, *>) value else error("Type Error: '$name' must be a map.")
+            "url" -> {
+                if (value !is String) {
+                    error("Type Error: Variable '$name' must be a valid URL string.")
                 }
+                if (!isValidUrl(value)) {
+                    error("Validation Error: '$value' is not a valid URL.")
+                }
+                symbolTable.setVariable(name, value)
+                value
             }
-            "list" -> {
-                if (value is List<*>) {
-                    symbolTable.setVariable(name, value)
-                } else {
-                    error("Type Error: Variable '$name' must be a list, got '${value::class.simpleName}'.")
+            "file" -> {
+                if (value !is String) {
+                    error("Type Error: Variable '$name' must be a valid file path string.")
                 }
+                val file = java.io.File(value)
+                if (!file.exists()) {
+                    println("⚠️ Warning: File '$value' does not exist.")
+                }
+                symbolTable.setVariable(name, value)
+                value
             }
-            "map" -> {
-                if (value is Map<*, *>) {
-                    symbolTable.setVariable(name, value)
-                } else {
-                    error("Type Error: Variable '$name' must be a map, got '${value::class.simpleName}'.")
+            "char" -> {
+                val str = value.toString()
+                if (str.length != 1) {
+                    error("Type Error: Variable '$name' must be a single character.")
                 }
+                symbolTable.setVariable(name, str)
+                str
             }
             "date" -> {
                 val parsed = when (value) {
@@ -91,9 +100,11 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
 
             else -> error("Syntax Error: Unknown type '$type' for variable '$name'.")
         }
-
+    
+        symbolTable.setVariable(name, parsedValue, isPrivate)
         return null
     }
+    
 
     override fun visitExpression(ctx: DMLParser.ExpressionContext): Any? {
         return visit(ctx.additionExpression())
@@ -220,4 +231,96 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         return symbolTable.getAll()
     }
     
+    fun getAllRaw(): Map<String, Any?> {
+        return symbolTable.getAllRaw()
+    }   
+    
+    private fun isValidUrl(url: String): Boolean {
+        val regex = Regex("""^(https?://)?[\w.-]+\.[a-z]{2,}(/.*)?$""", RegexOption.IGNORE_CASE)
+        return regex.matches(url)
+    }    
+
+    override fun visitEnumDeclaration(ctx: DMLParser.EnumDeclarationContext): Any? {
+        val name = ctx.IDENTIFIER(0).text
+        val values = mutableMapOf<String, String>()
+        
+        for (i in 1 until ctx.IDENTIFIER().size) {
+            val label = ctx.IDENTIFIER(i).text
+            values[label] = label
+        }
+        
+    
+        symbolTable.setVariable(name, values)
+        return null
+    }
+    
+    override fun visitClassDeclaration(ctx: DMLParser.ClassDeclarationContext): Any? {
+        val className = ctx.IDENTIFIER().text
+        val fields = mutableMapOf<String, String>()
+    
+        for (field in ctx.classField()) {
+            val type = field.TYPE().text
+            val fieldName = field.IDENTIFIER().text
+            fields[fieldName] = type
+        }
+    
+        classes[className] = fields
+        return null
+    }    
+
+    override fun visitClassInstanceDeclaration(ctx: DMLParser.ClassInstanceDeclarationContext): Any? {
+        val className = ctx.IDENTIFIER(0).text
+        val instanceName = ctx.IDENTIFIER(1).text
+    
+        val classDefinition = classes[className]
+            ?: error("Class '$className' is not defined")
+    
+        val instance = mutableMapOf<String, Any?>()
+    
+        for (assign in ctx.classAssignment()) {
+            val fieldName = assign.IDENTIFIER().text
+            val value = visit(assign.expression())
+    
+            val expectedType = classDefinition[fieldName]
+                ?: error("Field '$fieldName' not declared in class '$className'")
+    
+            val validatedValue = validateType(expectedType, fieldName, value)
+            instance[fieldName] = validatedValue
+        }
+    
+        symbolTable.setVariable(instanceName, instance)
+        return null
+    }  
+    
+    override fun visitAssignment(ctx: DMLParser.AssignmentContext): Any? {
+        val instanceName = ctx.IDENTIFIER(0).text
+        val fieldName = ctx.IDENTIFIER(1).text
+    
+        val variable = symbolTable.getVariable(instanceName)
+            ?: error("Variable '$instanceName' not found")
+    
+        if (variable !is MutableMap<*, *>) {
+            error("Variable '$instanceName' is not an instance")
+        }
+    
+        val value = visit(ctx.expression())
+        (variable as MutableMap<String, Any?>)[fieldName] = value
+    
+        return null
+    }    
+
+    private fun validateType(expected: String, fieldName: String, value: Any?): Any? {
+        return when (expected) {
+            "string" -> if (value is String) value else error("Expected string for '$fieldName'")
+            "number" -> when (value) {
+                is Int, is Double -> value
+                is String -> value.toIntOrNull() ?: value.toDoubleOrNull()
+                    ?: error("Expected number for '$fieldName'")
+                else -> error("Expected number for '$fieldName'")
+            }
+            "boolean" -> if (value is Boolean) value else error("Expected boolean for '$fieldName'")
+            else -> error("Unknown type '$expected'")
+        }
+    }    
+
 }

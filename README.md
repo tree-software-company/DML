@@ -8,7 +8,8 @@ Think of it as a strongly-typed, comment-friendly version of JSON — built for 
 
 ## 📦 Features
 
-- ✅ Basic types: `string`, `number`, `boolean`, `list`, `map`, `date`, `datetime`
+- ✅ Basic types: `string`, `number`, `boolean`, `list`, `map`, `url`, `file`, `char`
+- ✅ Possibility to create class
 - ✅ Arithmetic operations (e.g. `number age = 20 + 5`)
 - ✅ Function: `now()` with pssibility to add and subtraction dates `d` - day; `h` - hour;`m` - minutes (e.g. `date tomorrow = now("+1d");`)
 - ✅ Nested structures (e.g. `event.user.name`)
@@ -29,17 +30,10 @@ Think of it as a strongly-typed, comment-friendly version of JSON — built for 
 brew tap tree-software-company/dml
 brew install dml
 ```
-install the newest version:
-```bash
-brew uninstall dml
-brew untap tree-software-company/dml
-brew tap tree-software-company/dml
-brew install dml
-```
 Then you can use it globally like:
 
 ```bash
-dml read test.dml
+dml -r dml test.dml
 ```
 > ℹ️ The Homebrew formula will download the `.jar` from GitHub Releases automatically.
 
@@ -60,7 +54,7 @@ build/libs/DML-all.jar
 ```
 #### 2. Run the CLI
 ```bash
-java -jar build/libs/DML-all.jar read test.dml
+java -jar build/libs/DML-all.jar -r dml test.dml
 ```
 #### 3. (Optional) Make it global
 
@@ -107,17 +101,24 @@ Variables: {
 
 | Command        | Description                        |
 |----------------|------------------------------------|
-| `dml read dml FILE` | Executes and interprets a .dml file |
-| `dml read json FILE` | Convert .json file for .dml file |
-| `dml write json FILE` | Convert .dml file for .json file |
-| `dml write yaml FILE` | Convert .dml file for .yaml file |
-| `dml write xml FILE` | Convert .dml file for .xml file |
-| `dml write properties FILE` | Convert .dml file for .properties file |
-| `dml write plist FILE` | Convert .dml file for .plist file |
-| `dml lint FILE` | Check if .dml file will validate |
-| `dml format FILE` | Make .dml code more beauty |
-| `dml repl 'EXTENSION' FILE` | Create code from terminal|
-| `dml help` | Shows help menu |
+| `dml -r dml FILE` | Executes and interprets a .dml file |
+| `dml -r json FILE` | Convert .json file for .dml file |
+| `dml -r yaml FILE` | Convert .yaml file for .dml file |
+| `dml -r xml FILE` | Convert .xml file for .dml file |
+| `dml -r plist FILE` | Convert .plist file for .dml file |
+| `dml -r properties FILE` | Convert .properties file for .dml file |
+| `dml -w json FILE` | Convert .dml file for .json file |
+| `dml -w yaml FILE` | Convert .dml file for .yaml file |
+| `dml -w xml FILE` | Convert .dml file for .xml file |
+| `dml -w properties FILE` | Convert .dml file for .properties file |
+| `dml -w plist FILE` | Convert .dml file for .plist file |
+| `dml -l FILE` | Check if .dml file will validate |
+| `dml -f FILE` | Make .dml code more beauty |
+| `dml -e 'EXTENSION' FILE` | Create code from terminal |
+| `dml -n FILE` | Create a new DML file with a template |
+| `dml -h` or `dml --help`| Shows help menu |
+| `dml -v` or `dml --version`| Shows lang version |
+| `dml -u` or `dml update`| Update DML via Homebrew |
 
 ---
 

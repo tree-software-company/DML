@@ -23,12 +23,12 @@ class DMLInterpreter {
         val tokens = CommonTokenStream(lexer)
         val parser = DMLParser(tokens)
         val tree = parser.file()
-
+    
         val executor = DMLExecutor()
         executor.execute(tree)
-        return executor.getSymbolTable()
+        return executor.getAllRaw()
     }
-
+    
     fun toJson(map: Map<String, Any?>): String {
         val jsonElement = convertToJsonElement(map)
         return Json { prettyPrint = true }.encodeToString(JsonElement.serializer(), jsonElement)
@@ -168,7 +168,14 @@ class DMLInterpreter {
     private fun formatXmlValue(key: String, value: Any?, indent: String): String {
         return when (value) {
             null -> "$indent<$key />\n"
-            is String, is Number, is Boolean -> "$indent<$key>${value.toString()}</$key>\n"
+            is String -> {
+                if (isValidUrl(value)) {
+                    """$indent<$key href="$value" />\n"""
+                } else {
+                    "$indent<$key>${escapeXml(value)}</$key>\n"
+                }
+            }
+             is Number, is Boolean -> "$indent<$key>${value.toString()}</$key>\n"
             is List<*> -> {
                 val inner = value.joinToString("") { formatXmlValue("item", it, indent + "  ") }
                 "$indent<$key>\n$inner$indent</$key>\n"
@@ -338,5 +345,98 @@ class DMLInterpreter {
         }
         return true
     }
-      
+    private fun isValidUrl(url: String): Boolean {
+        val regex = Regex("""^(https?://)?[\w.-]+\.[a-z]{2,}(/.*)?$""", RegexOption.IGNORE_CASE)
+        return regex.matches(url)
+    }
+    
+    fun convertPlistToMap(plistText: String): Map<String, Any?> {
+        val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        val builder = factory.newDocumentBuilder()
+        val doc = builder.parse(plistText.byteInputStream())
+        doc.documentElement.normalize()
+    
+        if (doc.documentElement.nodeName != "plist") {
+            error("Root element must be <plist>")
+        }
+    
+        val dictNode = doc.documentElement.getElementsByTagName("dict").item(0)
+            ?: error("<plist> must contain <dict>")
+    
+        return parsePlistDict(dictNode)
+    }
+    
+    private fun parsePlistDict(dictNode: org.w3c.dom.Node): Map<String, Any?> {
+        val result = mutableMapOf<String, Any?>()
+        val children = dictNode.childNodes
+        var i = 0
+    
+        while (i < children.length) {
+            val keyNode = children.item(i++)
+            if (keyNode?.nodeName != "key") continue
+    
+            val key = keyNode.textContent.trim()
+            val valueNode = children.item(i++) ?: continue
+            val value = parsePlistValue(valueNode)
+            result[key] = value
+        }
+    
+        return result
+    }
+    
+    private fun parsePlistValue(node: org.w3c.dom.Node): Any? {
+        return when (node.nodeName) {
+            "string" -> node.textContent
+            "integer" -> node.textContent.toIntOrNull() ?: node.textContent
+            "true" -> true
+            "false" -> false
+            "array" -> {
+                val list = mutableListOf<Any?>()
+                for (i in 0 until node.childNodes.length) {
+                    val child = node.childNodes.item(i)
+                    if (child.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
+                        list.add(parsePlistValue(child))
+                    }
+                }
+                list
+            }
+            "dict" -> parsePlistDict(node)
+            else -> node.textContent
+        }
+    }
+    fun convertPropertiesToMap(propertiesText: String): Map<String, Any?> {
+        val props = java.util.Properties()
+        props.load(propertiesText.byteInputStream())
+    
+        val result = mutableMapOf<String, Any?>()
+    
+        for ((k, v) in props) {
+            val key = k.toString()
+            val value = v.toString()
+    
+            val converted: Any = when {
+                value.equals("true", true) -> true
+                value.equals("false", true) -> false
+                value.toIntOrNull() != null -> value.toInt()
+                value.toDoubleOrNull() != null -> value.toDouble()
+                value.contains(",") -> value.split(",").map { it.trim() }
+                else -> value
+            }
+    
+            val parts = key.split(".")
+            var current = result
+            for (i in 0 until parts.lastIndex) {
+                val part = parts[i]
+                val subMap = current.getOrPut(part) { mutableMapOf<String, Any?>() }
+                if (subMap !is MutableMap<*, *>) {
+                    error("Conflict on nested key '$part'")
+                }
+                current = subMap as MutableMap<String, Any?>
+            }
+            current[parts.last()] = converted
+        }
+    
+        return result
+    }
+    
 }

@@ -6,9 +6,28 @@ grammar DML;
 
 file: statement+;
 
-statement: variableDeclaration;
+statement: variableDeclaration
+         | enumDeclaration
+         | classDeclaration
+         | classInstanceDeclaration
+         | assignment;
 
-variableDeclaration: TYPE IDENTIFIER '=' expression ';';
+
+variableDeclaration: modifier? TYPE IDENTIFIER '=' expression ';';
+
+enumDeclaration: 'enum' IDENTIFIER '=' '[' IDENTIFIER (',' IDENTIFIER)* ']' ';';
+
+classDeclaration: 'class' IDENTIFIER '{' classField* '}' ';';
+
+classField: TYPE IDENTIFIER ';';
+
+classInstanceDeclaration: IDENTIFIER IDENTIFIER '{' classAssignment* '}' ';';
+
+classAssignment: IDENTIFIER '=' expression ';';
+
+assignment: IDENTIFIER '.' IDENTIFIER '=' expression ';';
+
+modifier: 'private';
 
 expression: additionExpression;
 
@@ -33,7 +52,7 @@ mapExpression: '{' pair (',' pair)* '}' ;
 
 pair: STRING ':' expression ;
 
-TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map' | 'date' | 'datetime' | 'time';
+TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map' | 'date' | 'datetime' | 'time' | 'url' | 'file' | 'char';
 
 STRING: '"' ( ~["\\] | '\\' . )* '"';
 NUMBER: [0-9]+ ('.' [0-9]+)?;
