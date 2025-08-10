@@ -34,14 +34,17 @@ public class DMLParser extends Parser {
 			"classField", "classInstanceDeclaration", "classAssignment", "assignment", 
 			"modifier", "expression", "additionExpression", "propertyAccessExpression", 
 			"primaryExpression", "listExpression", "mapExpression", "pair"
+
 		};
 	}
 	public static final String[] ruleNames = makeRuleNames();
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
+
 			null, "'='", "';'", "'enum'", "'['", "','", "']'", "'class'", "'{'", 
 			"'}'", "'.'", "'private'", "'+'", "'('", "')'", "':'"
+
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
@@ -50,6 +53,7 @@ public class DMLParser extends Parser {
 			null, null, null, null, null, null, null, null, null, null, null, null, 
 			null, null, null, null, "TYPE", "STRING", "NUMBER", "BOOLEAN", "IDENTIFIER", 
 			"WS", "LINE_COMMENT", "BLOCK_COMMENT"
+
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -756,6 +760,9 @@ public class DMLParser extends Parser {
 
 	@SuppressWarnings("CheckReturnValue")
 	public static class PrimaryExpressionContext extends ParserRuleContext {
+		public NowFunctionContext nowFunction() {
+			return getRuleContext(NowFunctionContext.class,0);
+		}
 		public TerminalNode STRING() { return getToken(DMLParser.STRING, 0); }
 		public TerminalNode NUMBER() { return getToken(DMLParser.NUMBER, 0); }
 		public TerminalNode BOOLEAN() { return getToken(DMLParser.BOOLEAN, 0); }
@@ -782,7 +789,7 @@ public class DMLParser extends Parser {
 			setState(140);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
-			case STRING:
+			case T__12:
 				enterOuterAlt(_localctx, 1);
 				{
 				setState(130);
@@ -790,21 +797,21 @@ public class DMLParser extends Parser {
 				}
 				break;
 			case NUMBER:
-				enterOuterAlt(_localctx, 2);
+				enterOuterAlt(_localctx, 3);
 				{
 				setState(131);
 				match(NUMBER);
 				}
 				break;
 			case BOOLEAN:
-				enterOuterAlt(_localctx, 3);
+				enterOuterAlt(_localctx, 4);
 				{
 				setState(132);
 				match(BOOLEAN);
 				}
 				break;
 			case IDENTIFIER:
-				enterOuterAlt(_localctx, 4);
+				enterOuterAlt(_localctx, 5);
 				{
 				setState(133);
 				match(IDENTIFIER);
@@ -999,6 +1006,51 @@ public class DMLParser extends Parser {
 		return _localctx;
 	}
 
+	@SuppressWarnings("CheckReturnValue")
+	public static class NowFunctionContext extends ParserRuleContext {
+		public TerminalNode STRING() { return getToken(DMLParser.STRING, 0); }
+		public NowFunctionContext(ParserRuleContext parent, int invokingState) {
+			super(parent, invokingState);
+		}
+		@Override public int getRuleIndex() { return RULE_nowFunction; }
+	}
+
+	public final NowFunctionContext nowFunction() throws RecognitionException {
+		NowFunctionContext _localctx = new NowFunctionContext(_ctx, getState());
+		enterRule(_localctx, 20, RULE_nowFunction);
+		int _la;
+		try {
+			enterOuterAlt(_localctx, 1);
+			{
+			setState(92);
+			match(T__12);
+			setState(93);
+			match(T__4);
+			setState(95);
+			_errHandler.sync(this);
+			_la = _input.LA(1);
+			if (_la==STRING) {
+				{
+				setState(94);
+				match(STRING);
+				}
+			}
+
+			setState(97);
+			match(T__5);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			_errHandler.reportError(this, re);
+			_errHandler.recover(this, re);
+		}
+		finally {
+			exitRule();
+		}
+		return _localctx;
+	}
+
 	public static final String _serializedATN =
 		"\u0004\u0001\u0017\u00a9\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001"+
 		"\u0002\u0002\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004"+
@@ -1073,7 +1125,7 @@ public class DMLParser extends Parser {
 		"\u001a\r\u0000{|\u0005\n\u0000\u0000|~\u0005\u0014\u0000\u0000}{\u0001"+
 		"\u0000\u0000\u0000~\u0081\u0001\u0000\u0000\u0000\u007f}\u0001\u0000\u0000"+
 		"\u0000\u007f\u0080\u0001\u0000\u0000\u0000\u0080\u0019\u0001\u0000\u0000"+
-		"\u0000\u0081\u007f\u0001\u0000\u0000\u0000\u0082\u008d\u0005\u0011\u0000"+
+		"\u0000\u0081\<<<<<<< release/0.5u007f\u0001\u0000\u0000\u0000\u0082\u008d\u0005\u0011\u0000"+
 		"\u0000\u0083\u008d\u0005\u0012\u0000\u0000\u0084\u008d\u0005\u0013\u0000"+
 		"\u0000\u0085\u008d\u0005\u0014\u0000\u0000\u0086\u008d\u0003\u001c\u000e"+
 		"\u0000\u0087\u008d\u0003\u001e\u000f\u0000\u0088\u0089\u0005\r\u0000\u0000"+

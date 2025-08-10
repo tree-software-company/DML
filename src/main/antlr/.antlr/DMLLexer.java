@@ -41,8 +41,10 @@ public class DMLLexer extends Lexer {
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
+
 			null, "'='", "';'", "'enum'", "'['", "','", "']'", "'class'", "'{'", 
 			"'}'", "'.'", "'private'", "'+'", "'('", "')'", "':'"
+
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
@@ -119,6 +121,7 @@ public class DMLLexer extends Lexer {
 		"\u000b\u0007\u000b\u0002\f\u0007\f\u0002\r\u0007\r\u0002\u000e\u0007\u000e"+
 		"\u0002\u000f\u0007\u000f\u0002\u0010\u0007\u0010\u0002\u0011\u0007\u0011"+
 		"\u0002\u0012\u0007\u0012\u0002\u0013\u0007\u0013\u0002\u0014\u0007\u0014"+
+
 		"\u0002\u0015\u0007\u0015\u0002\u0016\u0007\u0016\u0001\u0000\u0001\u0000"+
 		"\u0001\u0001\u0001\u0001\u0001\u0002\u0001\u0002\u0001\u0002\u0001\u0002"+
 		"\u0001\u0002\u0001\u0003\u0001\u0003\u0001\u0004\u0001\u0004\u0001\u0005"+

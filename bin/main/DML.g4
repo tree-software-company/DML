@@ -36,7 +36,8 @@ additionExpression: propertyAccessExpression ( '+' propertyAccessExpression )* ;
 propertyAccessExpression: primaryExpression ( '.' IDENTIFIER )* ;
 
 primaryExpression:
-      STRING
+      nowFunction
+    | STRING
     | NUMBER
     | BOOLEAN
     | IDENTIFIER
@@ -51,12 +52,15 @@ mapExpression: '{' pair (',' pair)* '}' ;
 
 pair: STRING ':' expression ;
 
-TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map' | 'url' | 'file' | 'char';
+TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map' | 'date' | 'datetime' | 'time'| 'url' | 'file' | 'char';
 
 STRING: '"' ( ~["\\] | '\\' . )* '"';
 NUMBER: [0-9]+ ('.' [0-9]+)?;
 BOOLEAN: 'true' | 'false';
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
+nowFunction
+    : 'now' '(' (STRING)? ')'
+    ;
 
 WS: [ \t\r\n]+ -> skip;
 LINE_COMMENT: '//' ~[\r\n]* -> skip;

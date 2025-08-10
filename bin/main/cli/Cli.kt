@@ -307,7 +307,6 @@ fun main(args: Array<String>) {
         }
 
         
-
         else -> println("Error: Unknown command '$command'. Type 'dml -h' for help.")
     }
 }
