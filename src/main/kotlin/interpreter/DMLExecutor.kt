@@ -104,11 +104,6 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         symbolTable.setVariable(name, parsedValue, isPrivate)
         return null
     }
-    
-
-    override fun visitExpression(ctx: DMLParser.ExpressionContext): Any? {
-        return visit(ctx.additionExpression())
-    }
 
     override fun visitAdditionExpression(ctx: DMLParser.AdditionExpressionContext): Any? {
         val expressions = ctx.propertyAccessExpression()
@@ -157,30 +152,8 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         if (ctx.mapExpression() != null) {
             return visit(ctx.mapExpression())
         }
-
-        if (ctx.text.startsWith("now(")) {
-            val text = ctx.text
-            val regex = """now\("(.*?)"\)""".toRegex()
-            val offset = regex.find(text)?.groupValues?.get(1)
-    
-            var result = java.time.LocalDateTime.now()
-    
-            if (offset != null) {
-    
-                val match = """([+-]\d+)([dhm])""".toRegex().matchEntire(offset)
-                    ?: error("Invalid offset format in now(). Use e.g. now(\"+1d\"), now(\"-2h\")")
-    
-                val (amountStr, unit) = match.destructured
-                val amount = amountStr.toInt()
-    
-                result = when (unit) {
-                    "d" -> result.plusDays(amount.toLong())
-                    "h" -> result.plusHours(amount.toLong())
-                    "m" -> result.plusMinutes(amount.toLong())
-                    else -> error("Unsupported unit '$unit'")
-                }
-            }
-            return result
+        if (ctx.nowFunction() != null) {
+            return visit(ctx.nowFunction())
         }
     
         return if (ctx.expression() != null) visit(ctx.expression()) else super.visitPrimaryExpression(ctx)
@@ -321,6 +294,50 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
             "boolean" -> if (value is Boolean) value else error("Expected boolean for '$fieldName'")
             else -> error("Unknown type '$expected'")
         }
-    }    
+    }  
 
+    override fun visitExpression(ctx: DMLParser.ExpressionContext): Any? {
+        return visit(ctx.comparisonExpression())
+    }
+
+    override fun visitComparisonExpression(ctx: DMLParser.ComparisonExpressionContext): Any? {
+        var result = visit(ctx.additionExpression(0))
+        
+        val opNode = ctx.COMPARISON_OPERATOR()
+        if (opNode == null) {
+            return result
+        }
+
+        val right = visit(ctx.additionExpression(1))
+        val operator = opNode.text
+
+        return when (operator) {
+            "==" -> result == right
+            "!=" -> result != right
+            ">"  -> (result as? Comparable<Any>)?.compareTo(right as Any) ?: 
+                    error("Invalid types for comparison with >") > 0
+            "<"  -> (result as? Comparable<Any>)?.compareTo(right as Any) ?: 
+                    error("Invalid types for comparison with <") < 0
+            ">=" -> (result as? Comparable<Any>)?.compareTo(right as Any) ?: 
+                    error("Invalid types for comparison with >=") >= 0
+            "<=" -> (result as? Comparable<Any>)?.compareTo(right as Any) ?: 
+                    error("Invalid types for comparison with <=") <= 0
+            else -> error("Unknown comparison operator: $operator")
+        }
+    }
+
+    override fun visitAssertStatement(ctx: DMLParser.AssertStatementContext): Any? {
+        val result = visit(ctx.expression())
+    
+        if (result !is Boolean) {
+            error("Assert statement requires a boolean expression, got: $result")
+        }
+    
+        if (!result) {
+            error("Assertion failed: ${ctx.expression().text}")
+        }
+    
+        println("✅ Assert passed: ${ctx.expression().text}")
+        return null
+    }
 }
