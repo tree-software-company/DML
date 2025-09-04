@@ -33,6 +33,7 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
                 if (!isValidUrl(value)) {
                     error("Validation Error: '$value' is not a valid URL.")
                 }
+
                 symbolTable.setVariable(name, value)
                 value
             }
@@ -104,6 +105,7 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         symbolTable.setVariable(name, parsedValue, isPrivate)
         return null
     }
+    
 
     override fun visitAdditionExpression(ctx: DMLParser.AdditionExpressionContext): Any? {
         val expressions = ctx.propertyAccessExpression()
