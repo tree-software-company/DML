@@ -1,12 +1,5 @@
-map user = {
-  "name": "Szymon"
-};
-string message = "Hello, Szymon";
-string users = "Szymon";
-number version = 1.0;
-date today = now();
-time nowTime = now();
-datetime full = now();
-date tomorrow = now("+1d");
-time before = now("-30m");
-datetime future = now("+1h");
+number age = 27;
+assert age > 0;
+
+string name = "Szymon";
+assert name != "";
