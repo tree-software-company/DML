@@ -1,13 +1,173 @@
 package interpreter
 
+import java.io.File
+import java.nio.file.Path
+import java.nio.file.Paths
+import kotlin.collections.mutableSetOf
 import org.antlr.v4.runtime.tree.ParseTree
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
 import parser.DMLBaseVisitor
 import parser.DMLParser
+import parser.DMLLexer
 
-class DMLExecutor : DMLBaseVisitor<Any?>() {
-    private val symbolTable = SymbolTable()
-
+class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>() {
+    private val importedFiles = mutableSetOf<String>()
+    private var currentDirectory: Path = Paths.get(System.getProperty("user.dir"))
     private val classes = mutableMapOf<String, Map<String, String>>()
+    private val importStack = mutableListOf<String>()
+    private val functions = mutableMapOf<String, DMLParser.FunctionDeclarationContext>()
+
+    constructor() : this(SymbolTable())
+
+    override fun visitImportStatement(ctx: DMLParser.ImportStatementContext): Any? {
+        val filePath = ctx.STRING().text.removeSurrounding("\"")
+        val absolutePath = resolveImportPath(filePath)
+        
+        if (importStack.contains(absolutePath)) {
+            throw RuntimeException("Circular import detected: ${importStack.joinToString(" -> ")} -> $filePath")
+        }
+        
+        if (importedFiles.contains(absolutePath)) {
+            return null
+        }
+        
+        val file = File(absolutePath)
+        if (!file.exists()) {
+            throw RuntimeException("Import error: File not found: $filePath")
+        }
+        
+        try {
+            importedFiles.add(absolutePath)
+            importStack.add(absolutePath)
+            
+            val previousDirectory = currentDirectory
+            currentDirectory = file.parentFile.toPath()
+            
+            val content = file.readText()
+            val lexer = DMLLexer(CharStreams.fromString(content))
+            val tokens = CommonTokenStream(lexer)
+            val parser = DMLParser(tokens)
+            val tree = parser.file()
+            
+            visit(tree)
+            
+            currentDirectory = previousDirectory
+            importStack.removeAt(importStack.size - 1)
+        } catch (e: Exception) {
+            throw RuntimeException("Import error in file $filePath: ${e.message}", e)
+        }
+        
+        return null
+    }
+
+    override fun visitFunctionDeclaration(ctx: DMLParser.FunctionDeclarationContext): Any? {
+        val name = ctx.IDENTIFIER().text
+        functions[name] = ctx
+        return null
+    }
+
+    override fun visitFunctionCallStatement(ctx: DMLParser.FunctionCallStatementContext): Any? {
+        val name = ctx.IDENTIFIER().text
+        val args = ctx.argumentList()?.expression()?.map { visit(it) } ?: emptyList()
+        
+        val result = callFunction(name, args)
+        return result
+    }
+
+    override fun visitPrintStatement(ctx: DMLParser.PrintStatementContext): Any? {
+        val value = visit(ctx.expression())
+        println(value)
+        return null
+    }
+
+    override fun visitReturnStatement(ctx: DMLParser.ReturnStatementContext): Any? {
+        val value = if (ctx.expression() != null) visit(ctx.expression()) else null
+        throw ReturnValue(value)
+    }
+
+    override fun visitVarDeclaration(ctx: DMLParser.VarDeclarationContext): Any? {
+        val name = ctx.IDENTIFIER().text
+        val value = visit(ctx.expression())
+        symbolTable.setVariable(name, value)
+        return null
+    }
+
+    private fun callFunction(name: String, args: List<Any?>): Any? {
+        val function = functions[name] ?: throw RuntimeException("Function '$name' not found")
+        
+        try {
+            val params = function.parameterList()?.IDENTIFIER() ?: emptyList()
+            if (params.size != args.size) {
+                throw RuntimeException("Function '$name' expects ${params.size} arguments, got ${args.size}")
+            }
+            
+            val oldValues = mutableMapOf<String, Any?>()
+            for (i in params.indices) {
+                val paramName = params[i].text
+                if (symbolTable.hasVariable(paramName)) {
+                    oldValues[paramName] = symbolTable.getVariable(paramName)
+                }
+                symbolTable.setVariable(paramName, args[i])
+            }
+            
+            for (stmt in function.statement()) {
+                visit(stmt)
+            }
+            
+            for (i in params.indices) {
+                val paramName = params[i].text
+                if (oldValues.containsKey(paramName)) {
+                    symbolTable.setVariable(paramName, oldValues[paramName])
+                } else {
+                    symbolTable.removeVariable(paramName)
+                }
+            }
+            
+            return null
+        } catch (e: ReturnValue) {
+            val params = function.parameterList()?.IDENTIFIER() ?: emptyList()
+            for (i in params.indices) {
+                val paramName = params[i].text
+                symbolTable.removeVariable(paramName)
+            }
+            return e.value
+        }
+    }
+
+    override fun visitPrimaryExpression(ctx: DMLParser.PrimaryExpressionContext): Any? {
+        if (ctx.STRING() != null) {
+            return ctx.STRING().text.removeSurrounding("\"")
+        }
+        if (ctx.NUMBER() != null) {
+            val numText = ctx.NUMBER().text
+            return if (numText.contains('.')) numText.toDouble() else numText.toInt()
+        }
+        if (ctx.BOOLEAN() != null) {
+            return ctx.BOOLEAN().text.toBoolean()
+        }
+        if (ctx.IDENTIFIER() != null) {
+            val name = ctx.IDENTIFIER().text
+            
+            if (ctx.argumentList() != null) {
+                val args = ctx.argumentList().expression().map { visit(it) }
+                return callFunction(name, args)
+            }
+            
+            return symbolTable.getVariable(name)
+        }
+        if (ctx.listExpression() != null) {
+            return visit(ctx.listExpression())
+        }
+        if (ctx.mapExpression() != null) {
+            return visit(ctx.mapExpression())
+        }
+        if (ctx.nowFunction() != null) {
+            return visit(ctx.nowFunction())
+        }
+    
+        return if (ctx.expression() != null) visit(ctx.expression()) else super.visitPrimaryExpression(ctx)
+    }
 
     override fun visitVariableDeclaration(ctx: DMLParser.VariableDeclarationContext): Any? {
         val type = ctx.TYPE().text
@@ -26,97 +186,54 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
             "boolean" -> if (value is Boolean) value else error("Type Error: '$name' must be boolean.")
             "list" -> if (value is List<*>) value else error("Type Error: '$name' must be a list.")
             "map" -> if (value is Map<*, *>) value else error("Type Error: '$name' must be a map.")
-            "url" -> {
-                if (value !is String) {
-                    error("Type Error: Variable '$name' must be a valid URL string.")
-                }
-                if (!isValidUrl(value)) {
-                    error("Validation Error: '$value' is not a valid URL.")
-                }
-
-                symbolTable.setVariable(name, value)
-                value
-            }
-            "file" -> {
-                if (value !is String) {
-                    error("Type Error: Variable '$name' must be a valid file path string.")
-                }
-                val file = java.io.File(value)
-                if (!file.exists()) {
-                    println("⚠️ Warning: File '$value' does not exist.")
-                }
-                symbolTable.setVariable(name, value)
-                value
-            }
-            "char" -> {
-                val str = value.toString()
-                if (str.length != 1) {
-                    error("Type Error: Variable '$name' must be a single character.")
-                }
-                symbolTable.setVariable(name, str)
-                str
-            }
-            "date" -> {
-                val parsed = when (value) {
-                    is String -> java.time.LocalDate.parse(value)
-                    is java.time.LocalDate -> value
-                    is java.time.LocalDateTime -> value.toLocalDate()
-                    else -> error("Type Error: Variable '$name' must be a date string in format yyyy-MM-dd.")
-                }
-
-                symbolTable.setVariable(name, parsed.toString())
-                return parsed.toString()
-            }
-            "datetime" -> {
-                val str = when (value) {
-                    is String -> value
-                    is java.time.LocalDateTime -> value.toString()
-                    else -> error("Type Error: Variable '$name' must be a datetime string in format yyyy-MM-dd'T'HH:mm.")
-                }
-
-                try {
-                    val parsed = java.time.LocalDateTime.parse(str)
-                    symbolTable.setVariable(name, parsed.toString())
-                    parsed.toString()
-                } catch (e: Exception) {
-                    error("Invalid datetime format for variable '$name'. Expected yyyy-MM-dd'T'HH:mm.")
-                }
-            }
-            "time" -> {
-                val str = when (value) {
-                    is String -> value
-                    is java.time.LocalDateTime -> value.toLocalTime().toString()
-                    is java.time.LocalTime -> value.toString()
-                    else -> error("Type Error: Variable '$name' must be a time string in format HH:mm.")
-                }
-
-                try {
-                    val parsed = java.time.LocalTime.parse(str)
-                    symbolTable.setVariable(name, parsed.toString())
-                    parsed.toString()
-                } catch (e: Exception) {
-                    error("Invalid time format for variable '$name'. Expected HH:mm.")
-                }
-            }
-
             else -> error("Syntax Error: Unknown type '$type' for variable '$name'.")
         }
     
         symbolTable.setVariable(name, parsedValue, isPrivate)
         return null
     }
-    
 
     override fun visitAdditionExpression(ctx: DMLParser.AdditionExpressionContext): Any? {
-        val expressions = ctx.propertyAccessExpression()
+        val expressions = ctx.multiplicationExpression()
         var result = visit(expressions[0])
-        for (expr in expressions.drop(1)) {
-            val right = visit(expr)
-            result = when {
-                result is Number && right is Number -> result.toInt() + right.toInt()
-                result is String || right is String -> result.toString() + right.toString()
-                else -> error("Invalid addition: $result + $right")
+        
+        var opIndex = 0
+        for (i in 1 until expressions.size) {
+            val right = visit(expressions[i])
+            
+            // Get the operator between expressions
+            val operator = when {
+                ctx.getChild(2 * i - 1).text == "+" -> "+"
+                ctx.getChild(2 * i - 1).text == "-" -> "-"
+                else -> "+"
             }
+            
+            result = when (operator) {
+                "+" -> when {
+                    result is Number && right is Number -> {
+                        if (result is Double || right is Double) {
+                            result.toDouble() + right.toDouble()
+                        } else {
+                            result.toInt() + right.toInt()
+                        }
+                    }
+                    result is String || right is String -> result.toString() + right.toString()
+                    else -> error("Invalid addition: $result + $right")
+                }
+                "-" -> when {
+                    result is Number && right is Number -> {
+                        if (result is Double || right is Double) {
+                            result.toDouble() - right.toDouble()
+                        } else {
+                            result.toInt() - right.toInt()
+                        }
+                    }
+                    else -> error("Invalid subtraction: $result - $right")
+                }
+                else -> error("Unknown operator: $operator")
+            }
+            
+            opIndex++
         }
         return result
     }
@@ -133,41 +250,13 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         return result
     }
 
-    override fun visitPrimaryExpression(ctx: DMLParser.PrimaryExpressionContext): Any? {
-    
-        if (ctx.STRING() != null) {
-            return ctx.STRING().text.removeSurrounding("\"")
-        }
-        if (ctx.NUMBER() != null) {
-            val numText = ctx.NUMBER().text
-            return if (numText.contains('.')) numText.toDouble() else numText.toInt()
-        }
-        if (ctx.BOOLEAN() != null) {
-            return ctx.BOOLEAN().text.toBoolean()
-        }
-        if (ctx.IDENTIFIER() != null) {
-            return symbolTable.getVariable(ctx.IDENTIFIER().text)
-        }
-        if (ctx.listExpression() != null) {
-            return visit(ctx.listExpression())
-        }
-        if (ctx.mapExpression() != null) {
-            return visit(ctx.mapExpression())
-        }
-        if (ctx.nowFunction() != null) {
-            return visit(ctx.nowFunction())
-        }
-    
-        return if (ctx.expression() != null) visit(ctx.expression()) else super.visitPrimaryExpression(ctx)
-    }    
-
     override fun visitListExpression(ctx: DMLParser.ListExpressionContext): List<Any> {
-        return ctx.expression().map { visit(it) ?: "null" }
+        return ctx.expression()?.map { visit(it) ?: "null" } ?: emptyList()
     }
 
     override fun visitMapExpression(ctx: DMLParser.MapExpressionContext): Map<String, Any> {
         val map = mutableMapOf<String, Any>()
-        for (pair in ctx.pair()) {
+        ctx.pair()?.forEach { pair ->
             val key = pair.STRING().text.removeSurrounding("\"")
             val value = visit(pair.expression()) ?: "null"
             map[key] = value
@@ -195,108 +284,6 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         }
         return result
     }
-    
-
-    fun execute(tree: ParseTree) {
-        visit(tree)
-        symbolTable.printVariables()
-    }
-
-    fun getSymbolTable(): Map<String, Any?> {
-        return symbolTable.getAll()
-    }
-    
-    fun getAllRaw(): Map<String, Any?> {
-        return symbolTable.getAllRaw()
-    }   
-    
-    private fun isValidUrl(url: String): Boolean {
-        val regex = Regex("""^(https?://)?[\w.-]+\.[a-z]{2,}(/.*)?$""", RegexOption.IGNORE_CASE)
-        return regex.matches(url)
-    }    
-
-    override fun visitEnumDeclaration(ctx: DMLParser.EnumDeclarationContext): Any? {
-        val name = ctx.IDENTIFIER(0).text
-        val values = mutableMapOf<String, String>()
-        
-        for (i in 1 until ctx.IDENTIFIER().size) {
-            val label = ctx.IDENTIFIER(i).text
-            values[label] = label
-        }
-        
-    
-        symbolTable.setVariable(name, values)
-        return null
-    }
-    
-    override fun visitClassDeclaration(ctx: DMLParser.ClassDeclarationContext): Any? {
-        val className = ctx.IDENTIFIER().text
-        val fields = mutableMapOf<String, String>()
-    
-        for (field in ctx.classField()) {
-            val type = field.TYPE().text
-            val fieldName = field.IDENTIFIER().text
-            fields[fieldName] = type
-        }
-    
-        classes[className] = fields
-        return null
-    }    
-
-    override fun visitClassInstanceDeclaration(ctx: DMLParser.ClassInstanceDeclarationContext): Any? {
-        val className = ctx.IDENTIFIER(0).text
-        val instanceName = ctx.IDENTIFIER(1).text
-    
-        val classDefinition = classes[className]
-            ?: error("Class '$className' is not defined")
-    
-        val instance = mutableMapOf<String, Any?>()
-    
-        for (assign in ctx.classAssignment()) {
-            val fieldName = assign.IDENTIFIER().text
-            val value = visit(assign.expression())
-    
-            val expectedType = classDefinition[fieldName]
-                ?: error("Field '$fieldName' not declared in class '$className'")
-    
-            val validatedValue = validateType(expectedType, fieldName, value)
-            instance[fieldName] = validatedValue
-        }
-    
-        symbolTable.setVariable(instanceName, instance)
-        return null
-    }  
-    
-    override fun visitAssignment(ctx: DMLParser.AssignmentContext): Any? {
-        val instanceName = ctx.IDENTIFIER(0).text
-        val fieldName = ctx.IDENTIFIER(1).text
-    
-        val variable = symbolTable.getVariable(instanceName)
-            ?: error("Variable '$instanceName' not found")
-    
-        if (variable !is MutableMap<*, *>) {
-            error("Variable '$instanceName' is not an instance")
-        }
-    
-        val value = visit(ctx.expression())
-        (variable as MutableMap<String, Any?>)[fieldName] = value
-    
-        return null
-    }    
-
-    private fun validateType(expected: String, fieldName: String, value: Any?): Any? {
-        return when (expected) {
-            "string" -> if (value is String) value else error("Expected string for '$fieldName'")
-            "number" -> when (value) {
-                is Int, is Double -> value
-                is String -> value.toIntOrNull() ?: value.toDoubleOrNull()
-                    ?: error("Expected number for '$fieldName'")
-                else -> error("Expected number for '$fieldName'")
-            }
-            "boolean" -> if (value is Boolean) value else error("Expected boolean for '$fieldName'")
-            else -> error("Unknown type '$expected'")
-        }
-    }  
 
     override fun visitExpression(ctx: DMLParser.ExpressionContext): Any? {
         return visit(ctx.comparisonExpression())
@@ -328,18 +315,107 @@ class DMLExecutor : DMLBaseVisitor<Any?>() {
         }
     }
 
-    override fun visitAssertStatement(ctx: DMLParser.AssertStatementContext): Any? {
-        val result = visit(ctx.expression())
-    
-        if (result !is Boolean) {
-            error("Assert statement requires a boolean expression, got: $result")
+    override fun visitMultiplicationExpression(ctx: DMLParser.MultiplicationExpressionContext): Any? {
+        val expressions = ctx.propertyAccessExpression()
+        var result = visit(expressions[0])
+        
+        var opIndex = 0
+        for (i in 1 until expressions.size) {
+            val right = visit(expressions[i])
+            
+            // Get the operator between expressions[i-1] and expressions[i]
+            val operator = when {
+                ctx.getChild(2 * i - 1).text == "*" -> "*"
+                ctx.getChild(2 * i - 1).text == "/" -> "/"
+                ctx.getChild(2 * i - 1).text == "%" -> "%"
+                else -> "*"
+            }
+            
+            result = when (operator) {
+                "*" -> when {
+                    result is Number && right is Number -> {
+                        if (result is Double || right is Double) {
+                            result.toDouble() * right.toDouble()
+                        } else {
+                            result.toInt() * right.toInt()
+                        }
+                    }
+                    else -> error("Invalid multiplication: $result * $right")
+                }
+                "/" -> when {
+                    result is Number && right is Number -> {
+                        if (right.toDouble() == 0.0) error("Division by zero")
+                        if (result is Double || right is Double) {
+                            result.toDouble() / right.toDouble()
+                        } else {
+                            result.toInt() / right.toInt()
+                        }
+                    }
+                    else -> error("Invalid division: $result / $right")
+                }
+                "%" -> when {
+                    result is Number && right is Number -> {
+                        if (right.toInt() == 0) error("Modulo by zero")
+                        result.toInt() % right.toInt()
+                    }
+                    else -> error("Invalid modulo: $result % $right")
+                }
+                else -> error("Unknown operator: $operator")
+            }
         }
+        return result
+    }
+
+    fun execute(tree: ParseTree) {
+        visit(tree)
+    }
+
+    fun executeAndPrint(tree: ParseTree) {
+        visit(tree)
+        symbolTable.printVariables()
+    }
+
+    fun getSymbolTable(): Map<String, Any?> {
+        return symbolTable.getAll()
+    }
     
-        if (!result) {
-            error("Assertion failed: ${ctx.expression().text}")
+    fun getAllRaw(): Map<String, Any?> {
+        return symbolTable.getAllRaw()
+    }   
+    
+    private fun isValidUrl(url: String): Boolean {
+        val regex = Regex("""^(https?://)?[\w.-]+\.[a-z]{2,}(/.*)?$""", RegexOption.IGNORE_CASE)
+        return regex.matches(url)
+    }    
+
+    fun executeFile(file: File) {
+        val previousDirectory = currentDirectory
+        currentDirectory = file.absoluteFile.parentFile.toPath()
+        
+        val content = file.readText()
+        val lexer = DMLLexer(CharStreams.fromString(content))
+        val tokens = CommonTokenStream(lexer)
+        val parser = DMLParser(tokens)
+        val tree = parser.file()
+        
+        visit(tree)
+        
+        currentDirectory = previousDirectory
+    }
+    
+    private fun resolveImportPath(importPath: String): String {
+        val importFile = File(importPath)
+        
+        // If it's an absolute path, use it directly
+        if (importFile.isAbsolute) {
+            return importFile.absolutePath
         }
-    
-        println("✅ Assert passed: ${ctx.expression().text}")
-        return null
+        
+        // Resolve relative to current directory
+        val resolvedFile = currentDirectory.resolve(importPath).toFile()
+        return resolvedFile.absolutePath
     }
 }
+
+// Exception class for handling function returns
+class ReturnValue(val value: Any?) : Exception()

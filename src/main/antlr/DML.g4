@@ -7,24 +7,44 @@ grammar DML;
 file: statement+;
 
 statement
-    : assertStatement
+    : importStatement
+    | functionDeclaration
     | variableDeclaration
+    | varDeclaration
     | enumDeclaration
     | classDeclaration
     | classInstanceDeclaration
     | assignment
+    | functionCallStatement
+    | printStatement
+    | returnStatement
+    | assertStatement
     ;
+
+importStatement: 'import' STRING ';' ;
+
+functionDeclaration: 'function' IDENTIFIER '(' parameterList? ')' '{' statement* '}' ;
+
+parameterList: IDENTIFIER (',' IDENTIFIER)* ;
+
+functionCallStatement: IDENTIFIER '(' argumentList? ')' ';' ;
+
+printStatement: 'print' '(' expression ')' ';' ;
+
+returnStatement: 'return' expression? ';' ;
+
+varDeclaration: 'var' IDENTIFIER '=' expression ';' ;
 
 variableDeclaration
     : modifier? TYPE IDENTIFIER '=' expression ';'
     ;
 
 enumDeclaration
-    : 'enum' IDENTIFIER '=' '[' IDENTIFIER (',' IDENTIFIER)* ']' ';'
+    : 'enum' IDENTIFIER '{' (IDENTIFIER (',' IDENTIFIER)*)? '}'
     ;
 
 classDeclaration
-    : 'class' IDENTIFIER '{' classField* '}' ';'
+    : 'class' IDENTIFIER '{' classField+ '}'
     ;
 
 classField
@@ -32,7 +52,7 @@ classField
     ;
 
 classInstanceDeclaration
-    : IDENTIFIER IDENTIFIER '{' classAssignment* '}' ';'
+    : IDENTIFIER IDENTIFIER '{' classAssignment* '}'
     ;
 
 classAssignment
@@ -47,91 +67,61 @@ assertStatement
     : 'assert' expression ';'
     ;
 
-modifier
-    : 'private'
-    ;
-
-expression
-    : comparisonExpression
-    ;
+expression: comparisonExpression ;
 
 comparisonExpression
     : additionExpression (COMPARISON_OPERATOR additionExpression)?
     ;
 
 additionExpression
-    : propertyAccessExpression ( '+' propertyAccessExpression )*
+    : multiplicationExpression (('+' | '-') multiplicationExpression)*
+    ;
+
+multiplicationExpression
+    : propertyAccessExpression (('*' | '/' | '%') propertyAccessExpression)*
     ;
 
 propertyAccessExpression
-    : primaryExpression ( '.' IDENTIFIER )*
+    : primaryExpression ('.' IDENTIFIER)*
     ;
 
 primaryExpression
-    : nowFunction
-    | STRING
+    : STRING
     | NUMBER
     | BOOLEAN
-    | IDENTIFIER
+    | IDENTIFIER ('(' argumentList? ')')?
     | listExpression
     | mapExpression
+    | nowFunction
     | '(' expression ')'
     ;
 
-listExpression
-    : '[' (expression (',' expression)*)? ']'
-    ;
+argumentList: expression (',' expression)* ;
 
-mapExpression
-    : '{' (pair (',' pair)*)? '}'
-    ;
+listExpression: '[' (expression (',' expression)*)? ']' ;
 
-pair
-    : STRING ':' expression
-    ;
+mapExpression: '{' (pair (',' pair)*)? '}' ;
 
-TYPE
-    : 'string' | 'number' | 'boolean' | 'list' | 'map'
-    | 'date' | 'datetime' | 'time' | 'url' | 'file' | 'char'
-    ;
+pair: STRING ':' expression ;
 
-COMPARISON_OPERATOR
-    : '=='
-    | '!='
-    | '>='
-    | '<='
-    | '>' 
-    | '<'
-    ;
+nowFunction: 'now' '(' STRING? ')' ;
 
-STRING
-    : '"' ( ~["\\] | '\\' . )* '"'
-    ;
+modifier: 'private' ;
 
-NUMBER
-    : [0-9]+ ('.' [0-9]+)?
-    ;
+TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map' | 'url' | 'file' | 'char' | 'date' | 'datetime' | 'time' ;
 
-BOOLEAN
-    : 'true' | 'false'
-    ;
+IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]* ;
 
-IDENTIFIER
-    : [a-zA-Z_][a-zA-Z0-9_]*
-    ;
+STRING: '"' (~["\r\n] | '\\"')* '"' ;
 
-nowFunction
-    : 'now' '(' STRING? ')'
-    ;
+NUMBER: [0-9]+ ('.' [0-9]+)? ;
 
-WS
-    : [ \t\r\n]+ -> skip
-    ;
+BOOLEAN: 'true' | 'false' ;
 
-LINE_COMMENT
-    : '//' ~[\r\n]* -> skip
-    ;
+COMPARISON_OPERATOR: '==' | '!=' | '>' | '<' | '>=' | '<=' ;
 
-BLOCK_COMMENT
-    : '/*' .*? '*/' -> skip
-    ;
+WS: [ \t\r\n]+ -> skip ;
+
+COMMENT: '//' ~[\r\n]* -> skip ;
+
+BLOCK_COMMENT: '/*' .*? '*/' -> skip ;
