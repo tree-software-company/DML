@@ -16,7 +16,6 @@ class Cli {
                 runInteractiveMode()
             }
             args[0] == "-r" && args.size >= 3 -> {
-                // Format: dml -r <format> <file.dml>
                 val format = args[1]
                 val filePath = args[2]
 
@@ -28,7 +27,6 @@ class Cli {
                 runConversionMode(format, filePath)
             }
             args.size == 1 -> {
-                // Format: dml <file.dml>
                 val filePath = args[0]
                 if (!filePath.endsWith(".dml")) {
                     println("Error: File must have .dml extension")

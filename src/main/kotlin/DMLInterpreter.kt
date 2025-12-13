@@ -1,11 +1,10 @@
-package interpreter // Jeśli jest w pakiecie interpreter
-
-// lub bez package jeśli jest w root
+package interpreter
 
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import parser.DMLLexer
 import parser.DMLParser
+import parser.DMLBaseVisitor
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.*
@@ -17,7 +16,8 @@ import java.io.File
 import interpreter.DMLExecutor
 import interpreter.SymbolTable
 
-class DMLInterpreter {
+class DMLInterpreter : DMLBaseVisitor<Any?>() {
+    private val regexPatterns = mutableMapOf<String, Regex>()
     private val symbolTable = SymbolTable()
     private val executor = DMLExecutor(symbolTable)
     
@@ -34,7 +34,7 @@ class DMLInterpreter {
         val lexer = DMLLexer(CharStreams.fromString(code))
         val tokens = CommonTokenStream(lexer)
         val parser = DMLParser(tokens)
-        val tree = parser.file()  // Zmieniamy z 'program' na 'file'
+        val tree = parser.file()
         
         executor.visit(tree)
     }
@@ -49,7 +49,7 @@ class DMLInterpreter {
         val parser = DMLParser(tokens)
         val tree = parser.file()
     
-        val executor = DMLExecutor()  // Używamy konstruktora bez parametru
+        val executor = DMLExecutor()
         executor.execute(tree)
         return executor.getAllRaw()
     }

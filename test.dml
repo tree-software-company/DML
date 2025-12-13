@@ -4,7 +4,6 @@ assert age > 0;
 string name = "Szymon";
 assert name != "";
 
-// Plik z funkcjami matematycznymi
 function add(a, b) {
     return a + b;
 }
@@ -17,4 +16,8 @@ function square(x) {
     return multiply(x, x);
 }
 
-var PI = 3.14159;
+number PI = 3.14159;
+
+regex emailPattern = "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}";
+string userEmail = "test@example.com";
+validate userEmail matches emailPattern;

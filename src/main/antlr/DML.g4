@@ -7,25 +7,46 @@ grammar DML;
 file: statement+;
 
 statement
-    : importStatement
+    : declaration
+    | assignment
+    | validation
+    | functionCallStatement
     | functionDeclaration
-    | variableDeclaration
+    | importStatement
+    | printStatement
+    | returnStatement
     | varDeclaration
+    | variableDeclaration
     | enumDeclaration
     | classDeclaration
     | classInstanceDeclaration
-    | assignment
-    | functionCallStatement
-    | printStatement
-    | returnStatement
     | assertStatement
     ;
 
-importStatement: 'import' STRING ';' ;
+importStatement
+    : 'import' STRING ';'
+    ;
 
-functionDeclaration: 'function' IDENTIFIER '(' parameterList? ')' '{' statement* '}' ;
+functionDeclaration
+    : 'function' IDENTIFIER '(' parameterList? ')' '{' statement* '}'
+    ;
 
-parameterList: IDENTIFIER (',' IDENTIFIER)* ;
+parameterList
+    : IDENTIFIER (',' IDENTIFIER)*
+    ;
+
+validation
+    : 'regex' IDENTIFIER '=' STRING ';'
+    | 'validate' IDENTIFIER 'matches' IDENTIFIER ';'
+    ;
+
+declaration
+    : TYPE IDENTIFIER ('=' expression)? ';'
+    ;
+
+assignment
+    : IDENTIFIER '.' IDENTIFIER '=' expression ';'
+    ;
 
 functionCallStatement: IDENTIFIER '(' argumentList? ')' ';' ;
 
@@ -57,10 +78,6 @@ classInstanceDeclaration
 
 classAssignment
     : IDENTIFIER '=' expression ';'
-    ;
-
-assignment
-    : IDENTIFIER '.' IDENTIFIER '=' expression ';'
     ;
 
 assertStatement

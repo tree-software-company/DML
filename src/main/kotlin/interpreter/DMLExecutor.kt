@@ -17,6 +17,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     private val classes = mutableMapOf<String, Map<String, String>>()
     private val importStack = mutableListOf<String>()
     private val functions = mutableMapOf<String, DMLParser.FunctionDeclarationContext>()
+    private val regexPatterns = mutableMapOf<String, Regex>()
 
     constructor() : this(SymbolTable())
 
@@ -169,27 +170,54 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         return if (ctx.expression() != null) visit(ctx.expression()) else super.visitPrimaryExpression(ctx)
     }
 
+    override fun visitDeclaration(ctx: DMLParser.DeclarationContext): Any? {
+        val type = ctx.TYPE().text
+        val name = ctx.IDENTIFIER().text
+        val value = ctx.expression()?.let { visit(it) }
+        symbolTable.setVariable(name, value)
+        return null
+    }
+
+    override fun visitAssignment(ctx: DMLParser.AssignmentContext): Any? {
+        val obj = ctx.IDENTIFIER(0).text
+        val prop = ctx.IDENTIFIER(1).text
+        val value = visit(ctx.expression())
+        return null
+    }
+
     override fun visitVariableDeclaration(ctx: DMLParser.VariableDeclarationContext): Any? {
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
-        val isPrivate = ctx.modifier() != null
-        val value = visit(ctx.expression()) ?: error("Runtime Error: Variable '$name' has no value.")
-    
-        val parsedValue = when (type) {
-            "string" -> value.toString()
-            "number" -> when (value) {
-                is Number -> value
-                is String -> value.toIntOrNull() ?: value.toDoubleOrNull()
-                    ?: error("Value '$value' is not a valid number.")
-                else -> error("Type Error: '$name' must be a number, got '${value::class.simpleName}'.")
-            }
-            "boolean" -> if (value is Boolean) value else error("Type Error: '$name' must be boolean.")
-            "list" -> if (value is List<*>) value else error("Type Error: '$name' must be a list.")
-            "map" -> if (value is Map<*, *>) value else error("Type Error: '$name' must be a map.")
-            else -> error("Syntax Error: Unknown type '$type' for variable '$name'.")
+        val value = visit(ctx.expression())
+        symbolTable.setVariable(name, value)
+        return null
+    }
+
+    override fun visitEnumDeclaration(ctx: DMLParser.EnumDeclarationContext): Any? {
+        return null
+    }
+
+    override fun visitClassDeclaration(ctx: DMLParser.ClassDeclarationContext): Any? {
+        val className = ctx.IDENTIFIER().text
+        val fields = mutableMapOf<String, String>()
+        ctx.classField().forEach { field ->
+            val fieldType = field.TYPE().text
+            val fieldName = field.IDENTIFIER().text
+            fields[fieldName] = fieldType
         }
-    
-        symbolTable.setVariable(name, parsedValue, isPrivate)
+        classes[className] = fields
+        return null
+    }
+
+    override fun visitClassInstanceDeclaration(ctx: DMLParser.ClassInstanceDeclarationContext): Any? {
+        return null
+    }
+
+    override fun visitAssertStatement(ctx: DMLParser.AssertStatementContext): Any? {
+        val result = visit(ctx.expression())
+        if (result != true) {
+            throw AssertionError("Assertion failed: ${ctx.expression().text}")
+        }
         return null
     }
 
@@ -200,8 +228,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         var opIndex = 0
         for (i in 1 until expressions.size) {
             val right = visit(expressions[i])
-            
-            // Get the operator between expressions
+
             val operator = when {
                 ctx.getChild(2 * i - 1).text == "+" -> "+"
                 ctx.getChild(2 * i - 1).text == "-" -> "-"
@@ -322,8 +349,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         var opIndex = 0
         for (i in 1 until expressions.size) {
             val right = visit(expressions[i])
-            
-            // Get the operator between expressions[i-1] and expressions[i]
+
             val operator = when {
                 ctx.getChild(2 * i - 1).text == "*" -> "*"
                 ctx.getChild(2 * i - 1).text == "/" -> "/"
@@ -405,17 +431,64 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     
     private fun resolveImportPath(importPath: String): String {
         val importFile = File(importPath)
-        
-        // If it's an absolute path, use it directly
+
         if (importFile.isAbsolute) {
             return importFile.absolutePath
         }
-        
-        // Resolve relative to current directory
+
         val resolvedFile = currentDirectory.resolve(importPath).toFile()
         return resolvedFile.absolutePath
     }
+
+    override fun visitValidation(ctx: DMLParser.ValidationContext): Any? {
+        val identifiers = ctx.IDENTIFIER()
+        return when {
+            identifiers.size == 1 -> {
+                val patternName = identifiers[0].text
+                val stringNode = ctx.STRING()
+                val patternString = stringNode.text
+                    .removeSurrounding("\"")
+                    .replace("\\\\", "\\")
+                regexPatterns[patternName] = Regex(patternString)
+                null
+            }
+            identifiers.size == 2 -> {
+                val variableName = identifiers[0].text
+                val patternName = identifiers[1].text
+                val value = symbolTable.getVariable(variableName) as? String
+                val pattern = regexPatterns[patternName]
+                
+                val result = if (pattern != null && value != null) {
+                    pattern.matches(value)
+                } else {
+                    false
+                }
+                
+                result
+            }
+            else -> false
+        }
+    }
+
+    override fun visitStatement(ctx: DMLParser.StatementContext): Any? {
+        return when {
+            ctx.declaration() != null -> visitDeclaration(ctx.declaration())
+            ctx.assignment() != null -> visitAssignment(ctx.assignment())
+            ctx.validation() != null -> visitValidation(ctx.validation())
+            ctx.functionCallStatement() != null -> visitFunctionCallStatement(ctx.functionCallStatement())
+            ctx.functionDeclaration() != null -> visitFunctionDeclaration(ctx.functionDeclaration())
+            ctx.importStatement() != null -> visitImportStatement(ctx.importStatement())
+            ctx.printStatement() != null -> visitPrintStatement(ctx.printStatement())
+            ctx.returnStatement() != null -> visitReturnStatement(ctx.returnStatement())
+            ctx.varDeclaration() != null -> visitVarDeclaration(ctx.varDeclaration())
+            ctx.variableDeclaration() != null -> visitVariableDeclaration(ctx.variableDeclaration())
+            ctx.enumDeclaration() != null -> visitEnumDeclaration(ctx.enumDeclaration())
+            ctx.classDeclaration() != null -> visitClassDeclaration(ctx.classDeclaration())
+            ctx.classInstanceDeclaration() != null -> visitClassInstanceDeclaration(ctx.classInstanceDeclaration())
+            ctx.assertStatement() != null -> visitAssertStatement(ctx.assertStatement())
+            else -> null
+        }
+    }
 }
 
-// Exception class for handling function returns
 class ReturnValue(val value: Any?) : Exception()
