@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import parser.DMLLexer
 import parser.DMLParser
+import parser.DMLBaseVisitor
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.*
@@ -11,9 +12,33 @@ import kotlinx.serialization.decodeFromString
 import org.yaml.snakeyaml.Yaml
 import org.yaml.snakeyaml.DumperOptions
 import java.lang.StringBuilder
+import java.io.File
+import interpreter.DMLExecutor
+import interpreter.SymbolTable
 
-class DMLInterpreter {
-
+class DMLInterpreter : DMLBaseVisitor<Any?>() {
+    private val regexPatterns = mutableMapOf<String, Regex>()
+    private val symbolTable = SymbolTable()
+    private val executor = DMLExecutor(symbolTable)
+    
+    fun executeFile(filePath: String) {
+        val file = File(filePath)
+        if (!file.exists()) {
+            throw RuntimeException("File not found: $filePath")
+        }
+        
+        executor.executeFile(file)
+    }
+    
+    fun executeString(code: String) {
+        val lexer = DMLLexer(CharStreams.fromString(code))
+        val tokens = CommonTokenStream(lexer)
+        val parser = DMLParser(tokens)
+        val tree = parser.file()
+        
+        executor.visit(tree)
+    }
+    
     fun execute(code: String): Map<String, Any?> {
         return evaluate(code)
     }
@@ -404,6 +429,7 @@ class DMLInterpreter {
             else -> node.textContent
         }
     }
+    
     fun convertPropertiesToMap(propertiesText: String): Map<String, Any?> {
         val props = java.util.Properties()
         props.load(propertiesText.byteInputStream())
@@ -438,5 +464,4 @@ class DMLInterpreter {
     
         return result
     }
-    
 }

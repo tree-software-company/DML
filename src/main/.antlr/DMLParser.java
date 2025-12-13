@@ -1,6 +1,4 @@
-// Generated from /Users/szymonmastalerz/Documents/_prywatne-studia/tree/DML/src/main/DML.g4 by ANTLR 4.13.1
-
-    package parser;
+package parser;
 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
