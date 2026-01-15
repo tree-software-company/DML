@@ -1,126 +1,189 @@
 package cli
 
-import interpreter.DMLInterpreter
+import interpreter.DMLExecutor
 import java.io.File
 
 class Cli {
     fun run(args: Array<String>) {
-        when {
-            args.isEmpty() -> {
-                printHelp()
-                return
-            }
-            args[0] == "-h" || args[0] == "--help" -> {
-                printHelp()
-                return
-            }
-            args[0] == "-v" || args[0] == "--version" -> {
-                println("DML version 0.6.2")
-                return
-            }
-            args[0] == "-u" || args[0] == "--update" -> {
-                updateDML()
-                return
-            }
-            args[0] == "-i" || args[0] == "--interactive" -> {
-                runInteractiveMode()
-            }
-            args[0] == "-r" && args.size >= 3 -> {
-                val format = args[1]
-                val filePath = args[2]
-                runConversionMode(format, filePath)
-            }
-            args.size == 1 -> {
-                val filePath = args[0]
-                if (!filePath.endsWith(".dml")) {
-                    println("Error: File must have .dml extension")
-                    return
-                }
-
-                try {
-                    val interpreter = DMLInterpreter()
-                    interpreter.executeFile(filePath)
-                } catch (e: Exception) {
-                    println("Error: ${e.message}")
-                }
-            }
-            else -> {
-                println("Error: Invalid arguments")
-                printHelp()
-            }
+        if (args.isEmpty()) {
+            printHelp()
+            return
         }
-    }
 
-    private fun updateDML() {
-        try {
-            println("🔄 Updating DML via Homebrew...")
-            val commands = listOf(
-                "brew uninstall dml",
-                "brew untap tree-software-company/dml",
-                "brew tap tree-software-company/dml",
-                "brew install dml"
-            )
-            for (cmd in commands) {
-                println("→ $cmd")
-                val process = ProcessBuilder(*cmd.split(" ").toTypedArray())
-                    .inheritIO()
-                    .start()
-                process.waitFor()
-            }
-            println("✅ DML updated successfully.")
-        } catch (e: Exception) {
-            println("❌ Failed to update DML: ${e.message}")
+        if (args[0] in listOf("-h", "--help", "help")) {
+            printHelp()
+            return
         }
-    }
 
-    private fun runConversionMode(format: String, filePath: String) {
+        if (args[0] in listOf("-v", "--version", "version")) {
+            println("DML version 1.0.0")
+            return
+        }
+
+        val (format, filePath) = if (args[0] == "-r" && args.size >= 3) {
+            args[1] to args[2]
+        } else if (args[0].startsWith("-")) {
+            println("Error: Unknown option: ${args[0]}")
+            println("Use -h or --help for usage information")
+            return
+        } else {
+            "text" to args[0]
+        }
+
+        val file = File(filePath)
+        if (!file.exists()) {
+            println("Error: File not found: $filePath")
+            return
+        }
+
         try {
-            val file = File(filePath)
-            if (!file.exists()) {
-                println("Error: File not found: $filePath")
-                return
-            }
+            val executor = DMLExecutor()
+            executor.executeFile(file)
 
-            val content = file.readText()
-            val interpreter = DMLInterpreter()
-            val data = interpreter.evaluate(content)
-
-            val result = when (format.lowercase()) {
-                "json" -> interpreter.toJson(data)
-                "yaml" -> interpreter.toYaml(data)
-                "xml" -> interpreter.toXml(data)
-                "properties" -> interpreter.toProperties(data)
-                "plist" -> interpreter.toPlist(data)
+            when (format.lowercase()) {
+                "json" -> printJson(executor.getAllRaw())
+                "yaml" -> printYaml(executor.getAllRaw())
+                "xml" -> printXml(executor.getAllRaw())
+                "text", "dml" -> executor.getSymbolTable().forEach { (key, value) ->
+                    println("$key = $value")
+                }
                 else -> {
                     println("Error: Unknown format '$format'")
-                    return
+                    println("Supported formats: json, yaml, xml, text, dml")
                 }
             }
-
-            println(result)
         } catch (e: Exception) {
             println("Error: ${e.message}")
+            if (args.contains("--debug") || args.contains("-d")) {
+                e.printStackTrace()
+            }
         }
     }
 
-    private fun runInteractiveMode() {
-        println("DML Interactive Mode")
-        println("Type 'exit' to quit")
-        
-        val interpreter = DMLInterpreter()
-        
-        while (true) {
-            print("dml> ")
-            val input = readLine() ?: break
+    private fun printHelp() {
+        println("""
+            DML - Data Markup Language
             
-            if (input.trim() == "exit") break
+            Usage:
+              dml <file.dml>                    Run a DML file
+              dml -r <format> <file.dml>        Run and output in specified format
+              dml -h, --help                    Show this help message
+              dml -v, --version                 Show version information
             
-            try {
-                interpreter.executeString(input)
-            } catch (e: Exception) {
-                println("Error: ${e.message}")
+            Output Formats:
+              text, dml       Plain text output (default)
+              json            JSON format
+              yaml            YAML format
+              xml             XML format
+            
+            Examples:
+              dml test.dml                      Run test.dml
+              dml -r json test.dml              Run and output as JSON
+              dml -r yaml test.dml              Run and output as YAML
+            
+            Options:
+              -d, --debug                       Show debug information on error
+        """.trimIndent())
+    }
+
+    private fun printJson(variables: Map<String, Any?>) {
+        println("{")
+        variables.entries.forEachIndexed { index, (key, value) ->
+            val jsonValue = when (value) {
+                is String -> "\"$value\""
+                is Number -> value.toString()
+                is Boolean -> value.toString()
+                is List<*> -> "[${value.joinToString(", ") { formatJsonValue(it) }}]"
+                is Map<*, *> -> formatJsonMap(value)
+                null -> "null"
+                else -> "\"$value\""
+            }
+            val comma = if (index < variables.size - 1) "," else ""
+            println("  \"$key\": $jsonValue$comma")
+        }
+        println("}")
+    }
+
+    private fun formatJsonValue(value: Any?): String {
+        return when (value) {
+            is String -> "\"$value\""
+            is Number -> value.toString()
+            is Boolean -> value.toString()
+            is List<*> -> "[${value.joinToString(", ") { formatJsonValue(it) }}]"
+            is Map<*, *> -> formatJsonMap(value)
+            null -> "null"
+            else -> "\"$value\""
+        }
+    }
+
+    private fun formatJsonMap(map: Map<*, *>): String {
+        val entries = map.entries.joinToString(", ") { (k, v) ->
+            "\"$k\": ${formatJsonValue(v)}"
+        }
+        return "{$entries}"
+    }
+
+    private fun printYaml(variables: Map<String, Any?>) {
+        variables.forEach { (key, value) ->
+            when (value) {
+                is String -> println("$key: \"$value\"")
+                is Number -> println("$key: $value")
+                is Boolean -> println("$key: $value")
+                is List<*> -> {
+                    println("$key:")
+                    value.forEach { item ->
+                        println("  - ${formatYamlValue(item)}")
+                    }
+                }
+                is Map<*, *> -> {
+                    println("$key:")
+                    value.forEach { (k, v) ->
+                        println("  $k: ${formatYamlValue(v)}")
+                    }
+                }
+                null -> println("$key: null")
+                else -> println("$key: $value")
             }
         }
+    }
+
+    private fun formatYamlValue(value: Any?): String {
+        return when (value) {
+            is String -> "\"$value\""
+            is Number -> value.toString()
+            is Boolean -> value.toString()
+            null -> "null"
+            else -> value.toString()
+        }
+    }
+
+    private fun printXml(variables: Map<String, Any?>) {
+        println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+        println("<variables>")
+        variables.forEach { (key, value) ->
+            when (value) {
+                is String -> println("  <$key>$value</$key>")
+                is Number -> println("  <$key>$value</$key>")
+                is Boolean -> println("  <$key>$value</$key>")
+                is List<*> -> {
+                    println("  <$key>")
+                    value.forEach { item ->
+                        println("    <item>$item</item>")
+                    }
+                    println("  </$key>")
+                }
+                is Map<*, *> -> {
+                    println("  <$key>")
+                    value.forEach { (k, v) ->
+                        println("    <$k>$v</$k>")
+                    }
+                    println("  </$key>")
+                }
+                null -> println("  <$key/>")
+                else -> println("  <$key>$value</$key>")
+            }
+        }
+        println("</variables>")
     }
 }
 

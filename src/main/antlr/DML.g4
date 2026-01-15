@@ -21,6 +21,7 @@ statement
     | classDeclaration
     | classInstanceDeclaration
     | assertStatement
+    | timezoneDeclaration
     ;
 
 importStatement
@@ -58,6 +59,10 @@ varDeclaration: 'var' IDENTIFIER '=' expression ';' ;
 
 variableDeclaration
     : modifier? TYPE IDENTIFIER '=' expression ';'
+    ;
+
+timezoneDeclaration
+    : 'timezone' IDENTIFIER '=' STRING ';'?
     ;
 
 enumDeclaration
@@ -129,7 +134,7 @@ TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map' | 'url' | 'file' | 'char'
 
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]* ;
 
-STRING: '"' (~["\r\n] | '\\"')* '"' ;
+STRING: ('"' (~["\r\n] | '\\"')* '"') | ('\'' (~['\r\n] | '\\\'')* '\'') ;
 
 NUMBER: [0-9]+ ('.' [0-9]+)? ;
 
