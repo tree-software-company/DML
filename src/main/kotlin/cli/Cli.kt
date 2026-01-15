@@ -7,9 +7,19 @@ class Cli {
     fun run(args: Array<String>) {
         when {
             args.isEmpty() -> {
-                println("DML Interpreter")
-                println("Usage: dml <file.dml> or dml -i for interactive mode")
-                println("       dml -r <format> <file.dml> - convert to specified format")
+                printHelp()
+                return
+            }
+            args[0] == "-h" || args[0] == "--help" -> {
+                printHelp()
+                return
+            }
+            args[0] == "-v" || args[0] == "--version" -> {
+                println("DML version 0.6.2")
+                return
+            }
+            args[0] == "-u" || args[0] == "--update" -> {
+                updateDML()
                 return
             }
             args[0] == "-i" || args[0] == "--interactive" -> {
@@ -18,12 +28,6 @@ class Cli {
             args[0] == "-r" && args.size >= 3 -> {
                 val format = args[1]
                 val filePath = args[2]
-
-                if (!filePath.endsWith(".dml")) {
-                    println("Error: File must have .dml extension")
-                    return
-                }
-
                 runConversionMode(format, filePath)
             }
             args.size == 1 -> {
@@ -42,9 +46,30 @@ class Cli {
             }
             else -> {
                 println("Error: Invalid arguments")
-                println("Usage: dml <file.dml> or dml -i for interactive mode")
-                println("       dml -r <format> <file.dml> - convert to specified format")
+                printHelp()
             }
+        }
+    }
+
+    private fun updateDML() {
+        try {
+            println("🔄 Updating DML via Homebrew...")
+            val commands = listOf(
+                "brew uninstall dml",
+                "brew untap tree-software-company/dml",
+                "brew tap tree-software-company/dml",
+                "brew install dml"
+            )
+            for (cmd in commands) {
+                println("→ $cmd")
+                val process = ProcessBuilder(*cmd.split(" ").toTypedArray())
+                    .inheritIO()
+                    .start()
+                process.waitFor()
+            }
+            println("✅ DML updated successfully.")
+        } catch (e: Exception) {
+            println("❌ Failed to update DML: ${e.message}")
         }
     }
 
@@ -66,10 +91,8 @@ class Cli {
                 "xml" -> interpreter.toXml(data)
                 "properties" -> interpreter.toProperties(data)
                 "plist" -> interpreter.toPlist(data)
-                "dml" -> interpreter.format(content)
                 else -> {
-                    println("Error: Unsupported format '$format'")
-                    println("Supported formats: json, yaml, xml, properties, plist, dml")
+                    println("Error: Unknown format '$format'")
                     return
                 }
             }
@@ -83,21 +106,15 @@ class Cli {
     private fun runInteractiveMode() {
         println("DML Interactive Mode")
         println("Type 'exit' to quit")
-
+        
         val interpreter = DMLInterpreter()
-
+        
         while (true) {
             print("dml> ")
-            val input = readlnOrNull() ?: break
-
-            if (input.trim().lowercase() == "exit") {
-                break
-            }
-
-            if (input.trim().isEmpty()) {
-                continue
-            }
-
+            val input = readLine() ?: break
+            
+            if (input.trim() == "exit") break
+            
             try {
                 interpreter.executeString(input)
             } catch (e: Exception) {
@@ -107,13 +124,9 @@ class Cli {
     }
 }
 
-fun main(args: Array<String>) {
-    Cli().run(args)
-}
-
 fun printHelp() {
-    print("""
-        DML Command Line Interface (Short mode)
+    println("""
+        DML Command Line Interface
         Usage: dml <command> [args]
 
         Commands:
@@ -136,4 +149,8 @@ fun printHelp() {
           -v, --version            - Show lang version
           -u, update               - Update DML via Homebrew
     """.trimIndent())
+}
+
+fun main(args: Array<String>) {
+    Cli().run(args)
 }
