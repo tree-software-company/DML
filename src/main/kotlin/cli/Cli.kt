@@ -16,7 +16,7 @@ class Cli {
         }
 
         if (args[0] in listOf("-v", "--version", "version")) {
-            println("DML version 1.0.0")
+            println("DML version 0.6.2")
             return
         }
 
@@ -64,25 +64,25 @@ class Cli {
         println("""
             DML - Data Markup Language
             
-            Usage:
-              dml <file.dml>                    Run a DML file
-              dml -r <format> <file.dml>        Run and output in specified format
-              dml -h, --help                    Show this help message
-              dml -v, --version                 Show version information
-            
-            Output Formats:
-              text, dml       Plain text output (default)
-              json            JSON format
-              yaml            YAML format
-              xml             XML format
-            
-            Examples:
-              dml test.dml                      Run test.dml
-              dml -r json test.dml              Run and output as JSON
-              dml -r yaml test.dml              Run and output as YAML
-            
-            Options:
-              -d, --debug                       Show debug information on error
+            Commands:
+          -r dml <file>            - Read and execute a .dml file
+          -r json <file>           - Convert .json to .dml
+          -r yaml <file>           - Convert .yaml to .dml
+          -r xml <file>            - Convert .xml to .dml
+          -r plist <file>          - Convert .plist to .dml
+          -r properties <file>     - Convert .properties to .dml
+          -w json <file>           - Convert .dml to .json
+          -w yaml <file>           - Convert .dml to .yaml
+          -w xml <file>            - Convert .dml to .xml
+          -w plist <file>          - Convert .dml to .plist
+          -w properties <file>     - Convert .dml to .properties
+          -l <file>                - Lint .dml file
+          -f <file>                - Format .dml file
+          -e '<expression>' <file> - Add DML expression to file
+          -n <file>                - Create a new DML file with a template
+          -h, --help               - Show this help
+          -v, --version            - Show lang version
+          -u, update               - Update DML via Homebrew
         """.trimIndent())
     }
 
