@@ -6,7 +6,7 @@ jobs:
       - image: cimg/openjdk:17.0
     environment:
       NEW_VERSION: "0.6.2"
-      SHA256: "881129e6e4edd1b4d4682dcf7acd9b6924322c2c8b1cc1349948745c7b6fe7f9"
+      SHA256: "8748864bcb9805b63faad317b46bc5ba73c322b04ebef87b5e6673f7f3089293"
     steps:
       - checkout
       - run:
