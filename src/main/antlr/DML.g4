@@ -21,6 +21,8 @@ statement
     | classDeclaration
     | classInstanceDeclaration
     | assertStatement
+    | timezoneDeclaration
+    | durationDeclaration
     ;
 
 importStatement
@@ -58,6 +60,14 @@ varDeclaration: 'var' IDENTIFIER '=' expression ';' ;
 
 variableDeclaration
     : modifier? TYPE IDENTIFIER '=' expression ';'
+    ;
+
+timezoneDeclaration
+    : 'timezone' IDENTIFIER '=' STRING ';'?
+    ;
+
+durationDeclaration
+    : 'duration' IDENTIFIER '=' DURATION ';'?
     ;
 
 enumDeclaration
@@ -106,6 +116,7 @@ primaryExpression
     : STRING
     | NUMBER
     | BOOLEAN
+    | DURATION
     | IDENTIFIER ('(' argumentList? ')')?
     | listExpression
     | mapExpression
@@ -127,9 +138,11 @@ modifier: 'private' ;
 
 TYPE: 'string' | 'number' | 'boolean' | 'list' | 'map' | 'url' | 'file' | 'char' | 'date' | 'datetime' | 'time' ;
 
+DURATION: [0-9]+ ':' [0-9][0-9] ':' [0-9][0-9] ;
+
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]* ;
 
-STRING: '"' (~["\r\n] | '\\"')* '"' ;
+STRING: ('"' (~["\r\n] | '\\"')* '"') | ('\'' (~['\r\n] | '\\\'')* '\'') ;
 
 NUMBER: [0-9]+ ('.' [0-9]+)? ;
 

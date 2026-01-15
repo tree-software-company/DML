@@ -10,6 +10,8 @@ import org.antlr.v4.runtime.CommonTokenStream
 import parser.DMLBaseVisitor
 import parser.DMLParser
 import parser.DMLLexer
+import java.time.ZoneId
+import java.time.Duration
 
 class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>() {
     private val importedFiles = mutableSetOf<String>()
@@ -22,7 +24,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     constructor() : this(SymbolTable())
 
     override fun visitImportStatement(ctx: DMLParser.ImportStatementContext): Any? {
-        val filePath = ctx.STRING().text.removeSurrounding("\"")
+        val filePath = ctx.STRING().text.removeSurrounding("\"").removeSurrounding("'")
         val absolutePath = resolveImportPath(filePath)
         
         if (importStack.contains(absolutePath)) {
@@ -60,6 +62,47 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         }
         
         return null
+    }
+
+    override fun visitTimezoneDeclaration(ctx: DMLParser.TimezoneDeclarationContext): Any? {
+        val name = ctx.IDENTIFIER().text
+        val tzString = ctx.STRING().text.removeSurrounding("\"").removeSurrounding("'")
+        
+        val timezone = try {
+            ZoneId.of(tzString)
+        } catch (e: Exception) {
+            throw RuntimeException("Invalid timezone: $tzString")
+        }
+        
+        symbolTable.setVariable(name, timezone)
+        return null
+    }
+
+    override fun visitDurationDeclaration(ctx: DMLParser.DurationDeclarationContext): Any? {
+        val name = ctx.IDENTIFIER().text
+        val durationString = ctx.DURATION().text
+        
+        val duration = try {
+            parseDuration(durationString)
+        } catch (e: Exception) {
+            throw RuntimeException("Invalid duration: $durationString")
+        }
+        
+        symbolTable.setVariable(name, duration)
+        return null
+    }
+
+    private fun parseDuration(durationString: String): Duration {
+        val parts = durationString.split(":")
+        if (parts.size != 3) {
+            throw IllegalArgumentException("Duration must be in format HH:MM:SS")
+        }
+        
+        val hours = parts[0].toLong()
+        val minutes = parts[1].toLong()
+        val seconds = parts[2].toLong()
+        
+        return Duration.ofHours(hours).plusMinutes(minutes).plusSeconds(seconds)
     }
 
     override fun visitFunctionDeclaration(ctx: DMLParser.FunctionDeclarationContext): Any? {
@@ -138,7 +181,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
 
     override fun visitPrimaryExpression(ctx: DMLParser.PrimaryExpressionContext): Any? {
         if (ctx.STRING() != null) {
-            return ctx.STRING().text.removeSurrounding("\"")
+            return ctx.STRING().text.removeSurrounding("\"").removeSurrounding("'")
         }
         if (ctx.NUMBER() != null) {
             val numText = ctx.NUMBER().text
@@ -146,6 +189,9 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         }
         if (ctx.BOOLEAN() != null) {
             return ctx.BOOLEAN().text.toBoolean()
+        }
+        if (ctx.DURATION() != null) {
+            return parseDuration(ctx.DURATION().text)
         }
         if (ctx.IDENTIFIER() != null) {
             val name = ctx.IDENTIFIER().text
@@ -284,7 +330,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     override fun visitMapExpression(ctx: DMLParser.MapExpressionContext): Map<String, Any> {
         val map = mutableMapOf<String, Any>()
         ctx.pair()?.forEach { pair ->
-            val key = pair.STRING().text.removeSurrounding("\"")
+            val key = pair.STRING().text.removeSurrounding("\"").removeSurrounding("'")
             val value = visit(pair.expression()) ?: "null"
             map[key] = value
         }
@@ -292,7 +338,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     }
 
     override fun visitNowFunction(ctx: DMLParser.NowFunctionContext): Any {
-        val offsetArg = ctx.STRING()?.text?.removeSurrounding("\"")
+        val offsetArg = ctx.STRING()?.text?.removeSurrounding("\"")?.removeSurrounding("'")
         var result = java.time.LocalDateTime.now()
     
         if (offsetArg != null) {
@@ -447,7 +493,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
                 val patternName = identifiers[0].text
                 val stringNode = ctx.STRING()
                 val patternString = stringNode.text
-                    .removeSurrounding("\"")
+                    .removeSurrounding("\"").removeSurrounding("'")
                     .replace("\\\\", "\\")
                 regexPatterns[patternName] = Regex(patternString)
                 null
@@ -486,6 +532,8 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
             ctx.classDeclaration() != null -> visitClassDeclaration(ctx.classDeclaration())
             ctx.classInstanceDeclaration() != null -> visitClassInstanceDeclaration(ctx.classInstanceDeclaration())
             ctx.assertStatement() != null -> visitAssertStatement(ctx.assertStatement())
+            ctx.timezoneDeclaration() != null -> visitTimezoneDeclaration(ctx.timezoneDeclaration())
+            ctx.durationDeclaration() != null -> visitDurationDeclaration(ctx.durationDeclaration())
             else -> null
         }
     }

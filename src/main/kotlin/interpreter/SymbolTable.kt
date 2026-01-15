@@ -42,3 +42,15 @@ class SymbolTable {
         println("Variables: $publicVars")
     }
 }
+
+enum class DMLType {
+    INT,
+    FLOAT,
+    STRING,
+    BOOL,
+    DATE,
+    TIME,
+    DATETIME,
+    TIMEZONE,
+    ARRAY
+}

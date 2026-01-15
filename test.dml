@@ -1,3 +1,12 @@
+timezone myTimeZone = 'UTC';
+timezone berlinTimeZone = 'Europe/Berlin';
+
+duration serviceDuration = 1:00:00
+duration shortBreak = 0:15:00
+duration longBreak = 0:30:00
+
+print( serviceDuration );
+
 number age = 27;
 assert age > 0;
 
