@@ -1,6 +1,7 @@
 package cli
 
 import interpreter.DMLExecutor
+import interpreter.DMLInterpreter
 import java.io.File
 
 class Cli {
@@ -37,19 +38,40 @@ class Cli {
         }
 
         try {
-            val executor = DMLExecutor()
-            executor.executeFile(file)
-
             when (format.lowercase()) {
-                "json" -> printJson(executor.getAllRaw())
-                "yaml" -> printYaml(executor.getAllRaw())
-                "xml" -> printXml(executor.getAllRaw())
-                "text", "dml" -> executor.getSymbolTable().forEach { (key, value) ->
-                    println("$key = $value")
+                "xml" -> {
+                    val interpreter = DMLInterpreter()
+                    val map = interpreter.convertXmlToMap(file.readText())
+                    map.forEach { (key, value) -> println("$key = $value") }
+                }
+                "plist" -> {
+                    val interpreter = DMLInterpreter()
+                    val map = interpreter.convertPlistToMap(file.readText())
+                    map.forEach { (key, value) -> println("$key = $value") }
+                }
+                "json" -> {
+                    val interpreter = DMLInterpreter()
+                    val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(file.readText())
+                        .let { it as? kotlinx.serialization.json.JsonObject }
+                        ?: throw IllegalArgumentException("Top-level JSON must be an object")
+                    val map = interpreter.convertJsonToMap(jsonObj)
+                    map.forEach { (key, value) -> println("$key = $value") }
+                }
+                "yaml" -> {
+                    val interpreter = DMLInterpreter()
+                    val map = interpreter.convertYamlToMap(file.readText())
+                    map.forEach { (key, value) -> println("$key = $value") }
+                }
+                "text", "dml" -> {
+                    val executor = DMLExecutor()
+                    executor.executeFile(file)
+                    executor.getSymbolTable().forEach { (key, value) ->
+                        println("$key = $value")
+                    }
                 }
                 else -> {
                     println("Error: Unknown format '$format'")
-                    println("Supported formats: json, yaml, xml, text, dml")
+                    println("Supported formats: json, yaml, xml, plist, yaml, text, dml")
                 }
             }
         } catch (e: Exception) {

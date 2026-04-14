@@ -16,6 +16,13 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.2")
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 kotlin {
@@ -40,9 +47,14 @@ application {
 }
 
 sourceSets["main"].java.srcDir("build/generated-src/antlr/main")
+sourceSets["test"].java.srcDir("build/generated-src/antlr/test")
 
 tasks.named("compileKotlin") {
     dependsOn("generateGrammarSource")
+}
+
+tasks.named("compileTestKotlin") {
+    dependsOn("generateTestGrammarSource")
 }
 
 tasks.generateGrammarSource {
