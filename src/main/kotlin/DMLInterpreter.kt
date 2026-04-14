@@ -11,6 +11,8 @@ import kotlinx.serialization.json.*
 import kotlinx.serialization.decodeFromString
 import org.yaml.snakeyaml.Yaml
 import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.LoaderOptions
+import org.yaml.snakeyaml.constructor.SafeConstructor
 import java.lang.StringBuilder
 import java.io.File
 import interpreter.DMLExecutor
@@ -289,7 +291,7 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
     }
 
     fun convertYamlToMap(yamlText: String): Map<String, Any?> {
-        val yaml = Yaml()
+        val yaml = Yaml(SafeConstructor(LoaderOptions()))
         val loaded = yaml.load<Any>(yamlText)
         if (loaded !is Map<*, *>) {
             throw IllegalArgumentException("Top-level YAML must be a map")
