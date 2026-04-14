@@ -16,6 +16,7 @@ import java.time.Duration
 class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>() {
     private val importedFiles = mutableSetOf<String>()
     private var currentDirectory: Path = Paths.get(System.getProperty("user.dir"))
+    private var sandboxRoot: Path? = null
     private val classes = mutableMapOf<String, Map<String, String>>()
     private val importStack = mutableListOf<String>()
     private val functions = mutableMapOf<String, DMLParser.FunctionDeclarationContext>()
@@ -462,28 +463,49 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
 
     fun executeFile(file: File) {
         val previousDirectory = currentDirectory
-        currentDirectory = file.absoluteFile.parentFile.toPath()
-        
-        val content = file.readText()
+        val canonicalFile = file.absoluteFile.canonicalFile
+        currentDirectory = canonicalFile.parentFile.toPath()
+
+        if (sandboxRoot == null) {
+            sandboxRoot = currentDirectory
+        }
+
+        val content = canonicalFile.readText()
         val lexer = DMLLexer(CharStreams.fromString(content))
         val tokens = CommonTokenStream(lexer)
         val parser = DMLParser(tokens)
         val tree = parser.file()
-        
+
         visit(tree)
-        
+
         currentDirectory = previousDirectory
     }
     
     private fun resolveImportPath(importPath: String): String {
-        val importFile = File(importPath)
-
-        if (importFile.isAbsolute) {
-            return importFile.absolutePath
+        val rawFile = if (File(importPath).isAbsolute) {
+            File(importPath)
+        } else {
+            currentDirectory.resolve(importPath).toFile()
         }
 
-        val resolvedFile = currentDirectory.resolve(importPath).toFile()
-        return resolvedFile.absolutePath
+        val canonical = rawFile.canonicalFile
+
+        sandboxRoot?.let { root ->
+            val canonicalRoot = root.toFile().canonicalFile
+            val resolvedPath = canonical.path
+            val rootPath = canonicalRoot.path
+
+            if (resolvedPath != rootPath &&
+                !resolvedPath.startsWith(rootPath + File.separator)
+            ) {
+                throw SecurityException(
+                    "Import path traversal zablokowany: " +
+                    "'$importPath' prowadzi poza katalog projektu '$rootPath'"
+                )
+            }
+        }
+
+        return canonical.absolutePath
     }
 
     override fun visitValidation(ctx: DMLParser.ValidationContext): Any? {
