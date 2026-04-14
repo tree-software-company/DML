@@ -199,35 +199,46 @@ class Cli {
 
     private fun printYaml(variables: Map<String, Any?>) {
         variables.forEach { (key, value) ->
+            val safeKey = escapeYamlKey(key)
             when (value) {
-                is String -> println("$key: \"$value\"")
-                is Number -> println("$key: $value")
-                is Boolean -> println("$key: $value")
+                is String  -> println("$safeKey: \"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+                is Number  -> println("$safeKey: $value")
+                is Boolean -> println("$safeKey: $value")
                 is List<*> -> {
-                    println("$key:")
+                    println("$safeKey:")
                     value.forEach { item ->
                         println("  - ${formatYamlValue(item)}")
                     }
                 }
                 is Map<*, *> -> {
-                    println("$key:")
+                    println("$safeKey:")
                     value.forEach { (k, v) ->
-                        println("  $k: ${formatYamlValue(v)}")
+                        println("  ${escapeYamlKey(k.toString())}: ${formatYamlValue(v)}")
                     }
                 }
-                null -> println("$key: null")
-                else -> println("$key: $value")
+                null -> println("$safeKey: null")
+                else -> println("$safeKey: $value")
             }
         }
     }
 
     private fun formatYamlValue(value: Any?): String {
         return when (value) {
-            is String -> "\"$value\""
-            is Number -> value.toString()
+            is String  -> "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+            is Number  -> value.toString()
             is Boolean -> value.toString()
-            null -> "null"
-            else -> value.toString()
+            null       -> "null"
+            else       -> value.toString()
+        }
+    }
+
+    private fun escapeYamlKey(key: String): String {
+        val needsQuoting = key.isEmpty() ||
+            key.any { it in ":,[]{}#&*?|<>=!%@`\"'\\\n\r" || it.isWhitespace() }
+        return if (needsQuoting) {
+            "\"${key.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+        } else {
+            key
         }
     }
 
