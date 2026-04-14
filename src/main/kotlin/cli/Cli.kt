@@ -21,6 +21,25 @@ class Cli {
             return
         }
 
+        if (args[0] in listOf("-u", "--update", "update")) {
+            println("Updating DML via Homebrew...")
+            val commands = listOf(
+                "brew uninstall dml",
+                "brew untap tree-software-company/dml",
+                "brew tap tree-software-company/dml",
+                "brew install dml"
+            )
+            for (cmd in commands) {
+                println("-> $cmd")
+                val process = ProcessBuilder(*cmd.split(" ").toTypedArray())
+                    .inheritIO()
+                    .start()
+                process.waitFor()
+            }
+            println("DML updated successfully.")
+            return
+        }
+
         val isWrite = args[0] == "-w"
         val (format, filePath) = if ((args[0] == "-r" || args[0] == "-w") && args.size >= 3) {
             args[1] to args[2]
