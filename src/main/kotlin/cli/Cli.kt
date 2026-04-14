@@ -143,37 +143,58 @@ class Cli {
         println("{")
         variables.entries.forEachIndexed { index, (key, value) ->
             val jsonValue = when (value) {
-                is String -> "\"$value\""
+                is String -> "\"${escapeJsonString(value)}\""
                 is Number -> value.toString()
                 is Boolean -> value.toString()
                 is List<*> -> "[${value.joinToString(", ") { formatJsonValue(it) }}]"
                 is Map<*, *> -> formatJsonMap(value)
                 null -> "null"
-                else -> "\"$value\""
+                else -> "\"${escapeJsonString(value.toString())}\""
             }
             val comma = if (index < variables.size - 1) "," else ""
-            println("  \"$key\": $jsonValue$comma")
+            println("  \"${escapeJsonString(key)}\": $jsonValue$comma")
         }
         println("}")
     }
 
     private fun formatJsonValue(value: Any?): String {
         return when (value) {
-            is String -> "\"$value\""
+            is String -> "\"${escapeJsonString(value)}\""
             is Number -> value.toString()
             is Boolean -> value.toString()
             is List<*> -> "[${value.joinToString(", ") { formatJsonValue(it) }}]"
             is Map<*, *> -> formatJsonMap(value)
             null -> "null"
-            else -> "\"$value\""
+            else -> "\"${escapeJsonString(value.toString())}\""
         }
     }
 
     private fun formatJsonMap(map: Map<*, *>): String {
         val entries = map.entries.joinToString(", ") { (k, v) ->
-            "\"$k\": ${formatJsonValue(v)}"
+            "\"${escapeJsonString(k.toString())}\": ${formatJsonValue(v)}"
         }
         return "{$entries}"
+    }
+
+    private fun escapeJsonString(value: String): String {
+        val sb = StringBuilder()
+        for (ch in value) {
+            when (ch) {
+                '\\' -> sb.append("\\\\")
+                '"'  -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                '\b' -> sb.append("\\b")
+                '\u000C' -> sb.append("\\f")
+                else -> if (ch.code < 0x20) {
+                    sb.append("\\u%04x".format(ch.code))
+                } else {
+                    sb.append(ch)
+                }
+            }
+        }
+        return sb.toString()
     }
 
     private fun printYaml(variables: Map<String, Any?>) {
