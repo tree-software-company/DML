@@ -21,7 +21,8 @@ class Cli {
             return
         }
 
-        val (format, filePath) = if (args[0] == "-r" && args.size >= 3) {
+        val isWrite = args[0] == "-w"
+        val (format, filePath) = if ((args[0] == "-r" || args[0] == "-w") && args.size >= 3) {
             args[1] to args[2]
         } else if (args[0].startsWith("-")) {
             println("Error: Unknown option: ${args[0]}")
@@ -38,40 +39,51 @@ class Cli {
         }
 
         try {
-            when (format.lowercase()) {
-                "xml" -> {
-                    val interpreter = DMLInterpreter()
-                    val map = interpreter.convertXmlToMap(file.readText())
-                    map.forEach { (key, value) -> println("$key = $value") }
+            if (isWrite) {
+                val executor = DMLExecutor()
+                executor.executeFile(file)
+                when (format.lowercase()) {
+                    "xml" -> printXml(executor.getSymbolTable())
+                    "json" -> printJson(executor.getSymbolTable())
+                    "yaml" -> printYaml(executor.getSymbolTable())
+                    else -> executor.getSymbolTable().forEach { (key, value) -> println("$key = $value") }
                 }
-                "plist" -> {
-                    val interpreter = DMLInterpreter()
-                    val map = interpreter.convertPlistToMap(file.readText())
-                    map.forEach { (key, value) -> println("$key = $value") }
-                }
-                "json" -> {
-                    val interpreter = DMLInterpreter()
-                    val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(file.readText())
-                        .let { it as? kotlinx.serialization.json.JsonObject }
-                        ?: throw IllegalArgumentException("Top-level JSON must be an object")
-                    val map = interpreter.convertJsonToMap(jsonObj)
-                    map.forEach { (key, value) -> println("$key = $value") }
-                }
-                "yaml" -> {
-                    val interpreter = DMLInterpreter()
-                    val map = interpreter.convertYamlToMap(file.readText())
-                    map.forEach { (key, value) -> println("$key = $value") }
-                }
-                "text", "dml" -> {
-                    val executor = DMLExecutor()
-                    executor.executeFile(file)
-                    executor.getSymbolTable().forEach { (key, value) ->
-                        println("$key = $value")
+            } else {
+                when (format.lowercase()) {
+                    "xml" -> {
+                        val interpreter = DMLInterpreter()
+                        val map = interpreter.convertXmlToMap(file.readText())
+                        map.forEach { (key, value) -> println("$key = $value") }
                     }
-                }
-                else -> {
-                    println("Error: Unknown format '$format'")
-                    println("Supported formats: json, yaml, xml, plist, yaml, text, dml")
+                    "plist" -> {
+                        val interpreter = DMLInterpreter()
+                        val map = interpreter.convertPlistToMap(file.readText())
+                        map.forEach { (key, value) -> println("$key = $value") }
+                    }
+                    "json" -> {
+                        val interpreter = DMLInterpreter()
+                        val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(file.readText())
+                            .let { it as? kotlinx.serialization.json.JsonObject }
+                            ?: throw IllegalArgumentException("Top-level JSON must be an object")
+                        val map = interpreter.convertJsonToMap(jsonObj)
+                        map.forEach { (key, value) -> println("$key = $value") }
+                    }
+                    "yaml" -> {
+                        val interpreter = DMLInterpreter()
+                        val map = interpreter.convertYamlToMap(file.readText())
+                        map.forEach { (key, value) -> println("$key = $value") }
+                    }
+                    "text", "dml" -> {
+                        val executor = DMLExecutor()
+                        executor.executeFile(file)
+                        executor.getSymbolTable().forEach { (key, value) ->
+                            println("$key = $value")
+                        }
+                    }
+                    else -> {
+                        println("Error: Unknown format '$format'")
+                        println("Supported formats: json, yaml, xml, plist, yaml, text, dml")
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -183,29 +195,49 @@ class Cli {
         println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
         println("<variables>")
         variables.forEach { (key, value) ->
+            val safeKey = sanitizeXmlTagName(key)
             when (value) {
-                is String -> println("  <$key>$value</$key>")
-                is Number -> println("  <$key>$value</$key>")
-                is Boolean -> println("  <$key>$value</$key>")
+                is String -> println("  <$safeKey>${escapeXml(value)}</$safeKey>")
+                is Number -> println("  <$safeKey>$value</$safeKey>")
+                is Boolean -> println("  <$safeKey>$value</$safeKey>")
                 is List<*> -> {
-                    println("  <$key>")
+                    println("  <$safeKey>")
                     value.forEach { item ->
-                        println("    <item>$item</item>")
+                        println("    <item>${escapeXml(item.toString())}</item>")
                     }
-                    println("  </$key>")
+                    println("  </$safeKey>")
                 }
                 is Map<*, *> -> {
-                    println("  <$key>")
+                    println("  <$safeKey>")
                     value.forEach { (k, v) ->
-                        println("    <$k>$v</$k>")
+                        val safeK = sanitizeXmlTagName(k.toString())
+                        println("    <$safeK>${escapeXml(v.toString())}</$safeK>")
                     }
-                    println("  </$key>")
+                    println("  </$safeKey>")
                 }
-                null -> println("  <$key/>")
-                else -> println("  <$key>$value</$key>")
+                null -> println("  <$safeKey/>")
+                else -> println("  <$safeKey>${escapeXml(value.toString())}</$safeKey>")
             }
         }
         println("</variables>")
+    }
+
+    private fun escapeXml(value: String): String {
+        return value
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
+    }
+
+    private fun sanitizeXmlTagName(name: String): String {
+        val sanitized = name.replace(Regex("[^a-zA-Z0-9_\\-.]"), "_")
+        return if (sanitized.isEmpty() || sanitized[0].isDigit() || sanitized[0] == '-' || sanitized[0] == '.') {
+            "_$sanitized"
+        } else {
+            sanitized
+        }
     }
 }
 
