@@ -11,6 +11,8 @@ import kotlinx.serialization.json.*
 import kotlinx.serialization.decodeFromString
 import org.yaml.snakeyaml.Yaml
 import org.yaml.snakeyaml.DumperOptions
+import org.yaml.snakeyaml.LoaderOptions
+import org.yaml.snakeyaml.constructor.SafeConstructor
 import java.lang.StringBuilder
 import java.io.File
 import interpreter.DMLExecutor
@@ -289,7 +291,7 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
     }
 
     fun convertYamlToMap(yamlText: String): Map<String, Any?> {
-        val yaml = Yaml()
+        val yaml = Yaml(SafeConstructor(LoaderOptions()))
         val loaded = yaml.load<Any>(yamlText)
         if (loaded !is Map<*, *>) {
             throw IllegalArgumentException("Top-level YAML must be a map")
@@ -299,9 +301,18 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
         return loaded as Map<String, Any?>
     }    
 
+    private fun createSecureDocumentBuilder(): javax.xml.parsers.DocumentBuilder {
+        val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+        factory.isExpandEntityReferences = false
+        return factory.newDocumentBuilder()
+    }
+
     fun convertXmlToMap(xmlText: String): Map<String, Any?> {
-        val dbFactory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
-        val dBuilder = dbFactory.newDocumentBuilder()
+        val dBuilder = createSecureDocumentBuilder()
         val doc = dBuilder.parse(xmlText.byteInputStream())
         doc.documentElement.normalize()
     
@@ -376,8 +387,7 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
     }
     
     fun convertPlistToMap(plistText: String): Map<String, Any?> {
-        val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
-        val builder = factory.newDocumentBuilder()
+        val builder = createSecureDocumentBuilder()
         val doc = builder.parse(plistText.byteInputStream())
         doc.documentElement.normalize()
     
@@ -401,7 +411,15 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
             if (keyNode?.nodeName != "key") continue
     
             val key = keyNode.textContent.trim()
-            val valueNode = children.item(i++) ?: continue
+            var valueNode: org.w3c.dom.Node? = null
+            while (i < children.length) {
+                val candidate = children.item(i++)
+                if (candidate.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
+                    valueNode = candidate
+                    break
+                }
+            }
+            if (valueNode == null) continue
             val value = parsePlistValue(valueNode)
             result[key] = value
         }

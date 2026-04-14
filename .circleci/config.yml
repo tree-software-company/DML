@@ -5,9 +5,9 @@ jobs:
     docker:
       - image: cimg/openjdk:17.0
     environment:
-      NEW_VERSION: "0.6.2"
-      SHA256: "881129e6e4edd1b4d4682dcf7acd9b6924322c2c8b1cc1349948745c7b6fe7f9"
 
+      NEW_VERSION: "0.7.0"
+      SHA256: "b6ebe482558fdf3629aada5f521d1485d6f792c79bcf0ccb1c51c884113cde11"
     steps:
       - checkout
       - run:
