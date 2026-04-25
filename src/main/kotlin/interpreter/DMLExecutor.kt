@@ -246,7 +246,8 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
         val value = visit(ctx.expression())
-        symbolTable.setVariable(name, value)
+        val isPrivate = ctx.modifier() != null
+        symbolTable.setVariable(name, value, isPrivate)
         return null
     }
 
