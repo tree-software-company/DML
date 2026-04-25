@@ -8,8 +8,6 @@ class DMLInterpreterSecurityTest {
 
     private val interpreter = DMLInterpreter()
 
-    // --- XXE: convertXmlToMap ---
-
     @Test
     fun `convertXmlToMap blokuje XXE z external entity`() {
         val xxeXml = """
@@ -58,7 +56,6 @@ class DMLInterpreterSecurityTest {
         assertEquals(true, result["active"])
     }
 
-    // --- XXE: convertPlistToMap ---
 
     @Test
     fun `convertPlistToMap blokuje XXE z external entity`() {
@@ -99,5 +96,45 @@ class DMLInterpreterSecurityTest {
         assertEquals("Bob", result["name"])
         assertEquals(42, result["score"])
         assertEquals(true, result["enabled"])
+    }
+
+    @Test
+    fun `regex blokuje zbyt dlugi wzorzec`() {
+        val longPattern = "a".repeat(501)
+        assertThrows<SecurityException> {
+            interpreter.executeString("""
+                regex bad = "$longPattern";
+            """.trimIndent())
+        }
+    }
+
+    @Test
+    fun `regex blokuje zbyt dlugi input`() {
+        val longInput = "a".repeat(10_001)
+        assertThrows<SecurityException> {
+            interpreter.executeString("""
+                regex p = ".*";
+                string s = "$longInput";
+                validate s matches p;
+            """.trimIndent())
+        }
+    }
+
+    @Test
+    fun `regex nie przekracza timeout dla normalnych wzorow`() {
+        interpreter.executeString("""
+            regex digits = "[0-9]+";
+            string n = "1234567890";
+            validate n matches digits;
+        """.trimIndent())
+    }
+
+    @Test
+    fun `regex dziala poprawnie dla bezpiecznych wzorow`() {
+        interpreter.executeString("""
+            regex email = "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-z]{2,}";
+            string addr = "user@example.com";
+            validate addr matches email;
+        """.trimIndent())
     }
 }

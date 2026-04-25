@@ -12,6 +12,10 @@ import parser.DMLParser
 import parser.DMLLexer
 import java.time.ZoneId
 import java.time.Duration
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.ExecutionException
 
 class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>() {
     private val importedFiles = mutableSetOf<String>()
@@ -21,6 +25,12 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     private val importStack = mutableListOf<String>()
     private val functions = mutableMapOf<String, DMLParser.FunctionDeclarationContext>()
     private val regexPatterns = mutableMapOf<String, Regex>()
+
+    companion object {
+        private const val REGEX_TIMEOUT_MS = 1000L
+        const val MAX_PATTERN_LENGTH = 500
+        const val MAX_INPUT_LENGTH = 10_000
+    }
 
     constructor() : this(SymbolTable())
 
@@ -513,10 +523,14 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         return when {
             identifiers.size == 1 -> {
                 val patternName = identifiers[0].text
-                val stringNode = ctx.STRING()
-                val patternString = stringNode.text
+                val patternString = ctx.STRING().text
                     .removeSurrounding("\"").removeSurrounding("'")
                     .replace("\\\\", "\\")
+                if (patternString.length > MAX_PATTERN_LENGTH) {
+                    throw SecurityException(
+                        "Regex pattern '$patternName' exceeds the limit of $MAX_PATTERN_LENGTH characters"
+                    )
+                }
                 regexPatterns[patternName] = Regex(patternString)
                 null
             }
@@ -525,16 +539,38 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
                 val patternName = identifiers[1].text
                 val value = symbolTable.getVariable(variableName) as? String
                 val pattern = regexPatterns[patternName]
-                
-                val result = if (pattern != null && value != null) {
-                    pattern.matches(value)
+
+                if (value != null && value.length > MAX_INPUT_LENGTH) {
+                    throw SecurityException(
+                        "Input value for '$variableName' exceeds the limit of $MAX_INPUT_LENGTH characters"
+                    )
+                }
+
+                if (pattern != null && value != null) {
+                    runRegexWithTimeout(pattern, value, patternName)
                 } else {
                     false
                 }
-                
-                result
             }
             else -> false
+        }
+    }
+
+    private fun runRegexWithTimeout(pattern: Regex, input: String, patternName: String): Boolean {
+        val executor = Executors.newSingleThreadExecutor { r ->
+            Thread(r, "dml-regex-thread").also { it.isDaemon = true }
+        }
+        val future = executor.submit<Boolean> { pattern.matches(input) }
+        executor.shutdown()
+        return try {
+            future.get(REGEX_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: TimeoutException) {
+            future.cancel(true)
+            throw SecurityException(
+                "Regex '$patternName' exceeded the ${REGEX_TIMEOUT_MS}ms time limit — possible ReDoS attack"
+            )
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
         }
     }
 
