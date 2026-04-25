@@ -39,7 +39,6 @@ class Cli {
             println("DML updated successfully.")
             return
         }
-
         val isWrite = args[0] == "-w"
         val (format, filePath) = if ((args[0] == "-r" || args[0] == "-w") && args.size >= 3) {
             args[1] to args[2]
