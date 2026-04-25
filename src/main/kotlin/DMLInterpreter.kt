@@ -19,7 +19,6 @@ import interpreter.DMLExecutor
 import interpreter.SymbolTable
 
 class DMLInterpreter : DMLBaseVisitor<Any?>() {
-    private val regexPatterns = mutableMapOf<String, Regex>()
     private val symbolTable = SymbolTable()
     private val executor = DMLExecutor(symbolTable)
     

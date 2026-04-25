@@ -21,6 +21,24 @@ class Cli {
             return
         }
 
+        if (args[0] in listOf("-u", "--update", "update")) {
+            println("Updating DML via Homebrew...")
+            val commands = listOf(
+                "brew uninstall dml",
+                "brew untap tree-software-company/dml",
+                "brew tap tree-software-company/dml",
+                "brew install dml"
+            )
+            for (cmd in commands) {
+                println("-> $cmd")
+                val process = ProcessBuilder(*cmd.split(" ").toTypedArray())
+                    .inheritIO()
+                    .start()
+                process.waitFor()
+            }
+            println("DML updated successfully.")
+            return
+        }
         val isWrite = args[0] == "-w"
         val (format, filePath) = if ((args[0] == "-r" || args[0] == "-w") && args.size >= 3) {
             args[1] to args[2]
@@ -124,70 +142,102 @@ class Cli {
         println("{")
         variables.entries.forEachIndexed { index, (key, value) ->
             val jsonValue = when (value) {
-                is String -> "\"$value\""
+                is String -> "\"${escapeJsonString(value)}\""
                 is Number -> value.toString()
                 is Boolean -> value.toString()
                 is List<*> -> "[${value.joinToString(", ") { formatJsonValue(it) }}]"
                 is Map<*, *> -> formatJsonMap(value)
                 null -> "null"
-                else -> "\"$value\""
+                else -> "\"${escapeJsonString(value.toString())}\""
             }
             val comma = if (index < variables.size - 1) "," else ""
-            println("  \"$key\": $jsonValue$comma")
+            println("  \"${escapeJsonString(key)}\": $jsonValue$comma")
         }
         println("}")
     }
 
     private fun formatJsonValue(value: Any?): String {
         return when (value) {
-            is String -> "\"$value\""
+            is String -> "\"${escapeJsonString(value)}\""
             is Number -> value.toString()
             is Boolean -> value.toString()
             is List<*> -> "[${value.joinToString(", ") { formatJsonValue(it) }}]"
             is Map<*, *> -> formatJsonMap(value)
             null -> "null"
-            else -> "\"$value\""
+            else -> "\"${escapeJsonString(value.toString())}\""
         }
     }
 
     private fun formatJsonMap(map: Map<*, *>): String {
         val entries = map.entries.joinToString(", ") { (k, v) ->
-            "\"$k\": ${formatJsonValue(v)}"
+            "\"${escapeJsonString(k.toString())}\": ${formatJsonValue(v)}"
         }
         return "{$entries}"
     }
 
+    private fun escapeJsonString(value: String): String {
+        val sb = StringBuilder()
+        for (ch in value) {
+            when (ch) {
+                '\\' -> sb.append("\\\\")
+                '"'  -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                '\b' -> sb.append("\\b")
+                '\u000C' -> sb.append("\\f")
+                else -> if (ch.code < 0x20) {
+                    sb.append("\\u%04x".format(ch.code))
+                } else {
+                    sb.append(ch)
+                }
+            }
+        }
+        return sb.toString()
+    }
+
     private fun printYaml(variables: Map<String, Any?>) {
         variables.forEach { (key, value) ->
+            val safeKey = escapeYamlKey(key)
             when (value) {
-                is String -> println("$key: \"$value\"")
-                is Number -> println("$key: $value")
-                is Boolean -> println("$key: $value")
+                is String  -> println("$safeKey: \"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
+                is Number  -> println("$safeKey: $value")
+                is Boolean -> println("$safeKey: $value")
                 is List<*> -> {
-                    println("$key:")
+                    println("$safeKey:")
                     value.forEach { item ->
                         println("  - ${formatYamlValue(item)}")
                     }
                 }
                 is Map<*, *> -> {
-                    println("$key:")
+                    println("$safeKey:")
                     value.forEach { (k, v) ->
-                        println("  $k: ${formatYamlValue(v)}")
+                        println("  ${escapeYamlKey(k.toString())}: ${formatYamlValue(v)}")
                     }
                 }
-                null -> println("$key: null")
-                else -> println("$key: $value")
+                null -> println("$safeKey: null")
+                else -> println("$safeKey: $value")
             }
         }
     }
 
     private fun formatYamlValue(value: Any?): String {
         return when (value) {
-            is String -> "\"$value\""
-            is Number -> value.toString()
+            is String  -> "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+            is Number  -> value.toString()
             is Boolean -> value.toString()
-            null -> "null"
-            else -> value.toString()
+            null       -> "null"
+            else       -> value.toString()
+        }
+    }
+
+    private fun escapeYamlKey(key: String): String {
+        val needsQuoting = key.isEmpty() ||
+            key.any { it in ":,[]{}#&*?|<>=!%@`\"'\\\n\r" || it.isWhitespace() }
+        return if (needsQuoting) {
+            "\"${key.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+        } else {
+            key
         }
     }
 
