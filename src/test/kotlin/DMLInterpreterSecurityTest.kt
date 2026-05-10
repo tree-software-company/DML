@@ -196,4 +196,81 @@ class DMLInterpreterSecurityTest {
             number result = add(1, 2);
         """.trimIndent())
     }
+
+    @Test
+    fun `deklaracja number z wartoscia string rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""number x = "hello";""")
+        }
+    }
+
+    @Test
+    fun `deklaracja string z wartoscia number rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""string x = 42;""")
+        }
+    }
+
+    @Test
+    fun `deklaracja boolean z wartoscia string rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""boolean x = "true";""")
+        }
+    }
+
+    @Test
+    fun `deklaracja boolean z wartoscia number rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""boolean x = 0;""")
+        }
+    }
+
+    @Test
+    fun `deklaracja list z wartoscia string rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""list x = "not a list";""")
+        }
+    }
+
+    @Test
+    fun `deklaracja char z wartoscia wieloznakowa rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""char x = "ab";""")
+        }
+    }
+
+    @Test
+    fun `poprawna deklaracja number int dziala`() {
+        interpreter.executeString("""number x = 42;""")
+    }
+
+    @Test
+    fun `poprawna deklaracja number float dziala`() {
+        interpreter.executeString("""number x = 3.14;""")
+    }
+
+    @Test
+    fun `poprawna deklaracja string dziala`() {
+        interpreter.executeString("""string x = "hello";""")
+    }
+
+    @Test
+    fun `poprawna deklaracja boolean dziala`() {
+        interpreter.executeString("""boolean x = true;""")
+    }
+
+    @Test
+    fun `deklaracja bez inicjalizacji nie rzuca bledu`() {
+        interpreter.executeString("""number x;""")
+    }
+
+    @Test
+    fun `komunikat bledu zawiera nazwe zmiennej i zadeklarowany typ`() {
+        val ex = assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""number x = "hello";""")
+        }
+        assertTrue(ex.message?.contains("x") == true)
+        assertTrue(ex.message?.contains("number") == true)
+    }
+
 }

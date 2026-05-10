@@ -237,10 +237,31 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         return if (ctx.expression() != null) visit(ctx.expression()) else super.visitPrimaryExpression(ctx)
     }
 
+    private fun validateTypeMatch(declaredType: String, value: Any?, name: String) {
+        if (value == null) return
+        val valid = when (declaredType) {
+            "string"                    -> value is String
+            "number"                    -> value is Int || value is Double || value is Long
+            "boolean"                   -> value is Boolean
+            "list"                      -> value is List<*>
+            "map"                       -> value is Map<*, *>
+            "char"                      -> value is String && value.length == 1
+            "url", "file"               -> value is String
+            "date", "datetime", "time"  -> true
+            else                        -> true
+        }
+        if (!valid) {
+            throw IllegalArgumentException(
+                "Type mismatch: variable '$name' declared as '$declaredType' but assigned value of type ${value::class.simpleName}"
+            )
+        }
+    }
+
     override fun visitDeclaration(ctx: DMLParser.DeclarationContext): Any? {
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
         val value = ctx.expression()?.let { visit(it) }
+        validateTypeMatch(type, value, name)
         symbolTable.setVariable(name, value)
         return null
     }
@@ -256,6 +277,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
         val value = visit(ctx.expression())
+        validateTypeMatch(type, value, name)
         val isPrivate = ctx.modifier() != null
         symbolTable.setVariable(name, value, isPrivate)
         return null
