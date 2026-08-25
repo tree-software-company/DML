@@ -1,5 +1,7 @@
 package cli
 
+import util.readTextLimited
+
 import interpreter.DMLInterpreter
 import java.io.File
 
@@ -17,7 +19,7 @@ fun main(args: Array<String>) {
         return
     }
 
-    val code = file.readText()
+    val code = file.readTextLimited()
 
     try {
         val interpreter = DMLInterpreter()

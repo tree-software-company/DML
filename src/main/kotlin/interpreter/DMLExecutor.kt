@@ -1,5 +1,7 @@
 package interpreter
 
+import util.readTextLimited
+
 import java.io.File
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -58,7 +60,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
             val previousDirectory = currentDirectory
             currentDirectory = file.parentFile.toPath()
             
-            val content = file.readText()
+            val content = file.readTextLimited()
             val lexer = DMLLexer(CharStreams.fromString(content))
             val tokens = CommonTokenStream(lexer)
             val parser = DMLParser(tokens)
@@ -481,7 +483,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
             sandboxRoot = currentDirectory
         }
 
-        val content = canonicalFile.readText()
+        val content = canonicalFile.readTextLimited()
         val lexer = DMLLexer(CharStreams.fromString(content))
         val tokens = CommonTokenStream(lexer)
         val parser = DMLParser(tokens)
