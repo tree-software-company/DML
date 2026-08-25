@@ -1,5 +1,7 @@
 package cli
 
+import util.readTextLimited
+
 import interpreter.DMLExecutor
 import interpreter.DMLInterpreter
 import java.io.File
@@ -70,17 +72,17 @@ class Cli {
                 when (format.lowercase()) {
                     "xml" -> {
                         val interpreter = DMLInterpreter()
-                        val map = interpreter.convertXmlToMap(file.readText())
+                        val map = interpreter.convertXmlToMap(file.readTextLimited())
                         map.forEach { (key, value) -> println("$key = $value") }
                     }
                     "plist" -> {
                         val interpreter = DMLInterpreter()
-                        val map = interpreter.convertPlistToMap(file.readText())
+                        val map = interpreter.convertPlistToMap(file.readTextLimited())
                         map.forEach { (key, value) -> println("$key = $value") }
                     }
                     "json" -> {
                         val interpreter = DMLInterpreter()
-                        val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(file.readText())
+                        val jsonObj = kotlinx.serialization.json.Json.parseToJsonElement(file.readTextLimited())
                             .let { it as? kotlinx.serialization.json.JsonObject }
                             ?: throw IllegalArgumentException("Top-level JSON must be an object")
                         val map = interpreter.convertJsonToMap(jsonObj)
@@ -88,7 +90,7 @@ class Cli {
                     }
                     "yaml" -> {
                         val interpreter = DMLInterpreter()
-                        val map = interpreter.convertYamlToMap(file.readText())
+                        val map = interpreter.convertYamlToMap(file.readTextLimited())
                         map.forEach { (key, value) -> println("$key = $value") }
                     }
                     "text", "dml" -> {
