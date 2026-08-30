@@ -1,5 +1,6 @@
 package cli
 
+import interpreter.DMLExecutor
 import interpreter.DMLInterpreter
 import java.io.File
 
@@ -17,7 +18,7 @@ fun main(args: Array<String>) {
         return
     }
 
-    val code = file.readText()
+    val code = DMLExecutor.readFileChecked(file)
 
     try {
         val interpreter = DMLInterpreter()
