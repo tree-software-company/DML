@@ -21,6 +21,10 @@ import interpreter.SymbolTable
 class DMLInterpreter : DMLBaseVisitor<Any?>() {
     private val symbolTable = SymbolTable()
     private val executor = DMLExecutor(symbolTable)
+
+    companion object {
+        const val MAX_NESTING_DEPTH = 100
+    }
     
     fun executeFile(filePath: String) {
         val file = File(filePath)
@@ -36,8 +40,11 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
         val tokens = CommonTokenStream(lexer)
         val parser = DMLParser(tokens)
         val tree = parser.file()
-        
-        executor.visit(tree)
+        try {
+            executor.visit(tree)
+        } catch (e: StackOverflowError) {
+            throw RuntimeException("Stack overflow — expression nesting too deep or infinite recursion", e)
+        }
     }
     
     fun execute(code: String): Map<String, Any?> {
@@ -168,15 +175,16 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
         }
     }
 
-    private fun flattenMap(map: Map<String, Any?>, prefix: String = ""): Map<String, Any?> {
+    private fun flattenMap(map: Map<String, Any?>, prefix: String = "", depth: Int = 0): Map<String, Any?> {
+        if (depth > MAX_NESTING_DEPTH) throw RuntimeException("Map nesting depth exceeds limit of $MAX_NESTING_DEPTH")
         val result = mutableMapOf<String, Any?>()
-    
+
         for ((key, value) in map) {
             val fullKey = if (prefix.isEmpty()) key else "$prefix.$key"
-    
+
             when (value) {
                 is Map<*, *> -> {
-                    val nested = flattenMap(value as Map<String, Any?>, fullKey)
+                    val nested = flattenMap(value as Map<String, Any?>, fullKey, depth + 1)
                     result.putAll(nested)
                 }
                 is List<*> -> {
@@ -187,7 +195,7 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
                 }
             }
         }
-    
+
         return result
     }
     
@@ -266,11 +274,12 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
             .replace("'", "&apos;")
     }   
 
-    fun convertJsonToMap(obj: JsonObject): Map<String, Any?> {
-        return obj.mapValues { (_, value) -> convertJsonValue(value) }
+    fun convertJsonToMap(obj: JsonObject, depth: Int = 0): Map<String, Any?> {
+        return obj.mapValues { (_, value) -> convertJsonValue(value, depth) }
     }
-    
-    private fun convertJsonValue(value: JsonElement): Any? {
+
+    private fun convertJsonValue(value: JsonElement, depth: Int = 0): Any? {
+        if (depth > MAX_NESTING_DEPTH) throw RuntimeException("JSON nesting depth exceeds limit of $MAX_NESTING_DEPTH")
         return when (value) {
             is JsonNull -> null
             is JsonPrimitive -> {
@@ -283,8 +292,8 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
                     else -> value.content
                 }
             }
-            is JsonArray -> value.map { convertJsonValue(it) }
-            is JsonObject -> convertJsonToMap(value)
+            is JsonArray -> value.map { convertJsonValue(it, depth + 1) }
+            is JsonObject -> convertJsonToMap(value, depth + 1)
             else -> null
         }
     }
@@ -334,7 +343,8 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
         return result
     }
     
-    private fun parseXmlNode(node: org.w3c.dom.Node): Any? {
+    private fun parseXmlNode(node: org.w3c.dom.Node, depth: Int = 0): Any? {
+        if (depth > MAX_NESTING_DEPTH) throw RuntimeException("XML nesting depth exceeds limit of $MAX_NESTING_DEPTH")
         val children = node.childNodes
         if (children.length == 1 && children.item(0).nodeType == org.w3c.dom.Node.TEXT_NODE) {
             val raw = children.item(0).textContent.trim()
@@ -346,24 +356,24 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
                 else -> raw
             }
         }
-    
+
         if (node.nodeName == "array" || node.nodeName == "list" || allChildrenNamed(node, "item")) {
             val list = mutableListOf<Any?>()
             for (i in 0 until children.length) {
                 val item = children.item(i)
                 if (item.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
-                    list.add(parseXmlNode(item))
+                    list.add(parseXmlNode(item, depth + 1))
                 }
             }
             return list
         }
-    
+
         val map = mutableMapOf<String, Any?>()
         for (i in 0 until children.length) {
             val child = children.item(i)
             if (child.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
                 val key = child.nodeName
-                val value = parseXmlNode(child)
+                val value = parseXmlNode(child, depth + 1)
                 map[key] = value
             }
         }
@@ -400,15 +410,16 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
         return parsePlistDict(dictNode)
     }
     
-    private fun parsePlistDict(dictNode: org.w3c.dom.Node): Map<String, Any?> {
+    private fun parsePlistDict(dictNode: org.w3c.dom.Node, depth: Int = 0): Map<String, Any?> {
+        if (depth > MAX_NESTING_DEPTH) throw RuntimeException("Plist nesting depth exceeds limit of $MAX_NESTING_DEPTH")
         val result = mutableMapOf<String, Any?>()
         val children = dictNode.childNodes
         var i = 0
-    
+
         while (i < children.length) {
             val keyNode = children.item(i++)
             if (keyNode?.nodeName != "key") continue
-    
+
             val key = keyNode.textContent.trim()
             var valueNode: org.w3c.dom.Node? = null
             while (i < children.length) {
@@ -419,14 +430,15 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
                 }
             }
             if (valueNode == null) continue
-            val value = parsePlistValue(valueNode)
+            val value = parsePlistValue(valueNode, depth + 1)
             result[key] = value
         }
-    
+
         return result
     }
-    
-    private fun parsePlistValue(node: org.w3c.dom.Node): Any? {
+
+    private fun parsePlistValue(node: org.w3c.dom.Node, depth: Int = 0): Any? {
+        if (depth > MAX_NESTING_DEPTH) throw RuntimeException("Plist nesting depth exceeds limit of $MAX_NESTING_DEPTH")
         return when (node.nodeName) {
             "string" -> node.textContent
             "integer" -> node.textContent.toIntOrNull() ?: node.textContent
@@ -437,12 +449,12 @@ class DMLInterpreter : DMLBaseVisitor<Any?>() {
                 for (i in 0 until node.childNodes.length) {
                     val child = node.childNodes.item(i)
                     if (child.nodeType == org.w3c.dom.Node.ELEMENT_NODE) {
-                        list.add(parsePlistValue(child))
+                        list.add(parsePlistValue(child, depth + 1))
                     }
                 }
                 list
             }
-            "dict" -> parsePlistDict(node)
+            "dict" -> parsePlistDict(node, depth + 1)
             else -> node.textContent
         }
     }

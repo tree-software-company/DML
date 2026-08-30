@@ -1,4 +1,6 @@
 import interpreter.DMLInterpreter
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
@@ -138,4 +140,137 @@ class DMLInterpreterSecurityTest {
             validate addr matches email;
         """.trimIndent())
     }
+
+    @Test
+    fun `callFunction rzuca na bezposrednia nieskonczona rekurencje`() {
+        assertThrows<RuntimeException> {
+            interpreter.executeString("function f() { f() }\nf()")
+        }
+    }
+
+    @Test
+    fun `callFunction rzuca na wzajemna rekurencje`() {
+        assertThrows<RuntimeException> {
+            interpreter.executeString("function ping() { pong() }\nfunction pong() { ping() }\nping()")
+        }
+    }
+
+    @Test
+    fun `komunikat bledu rekurencji zawiera slowo depth lub recursion`() {
+        val ex = assertThrows<RuntimeException> {
+            interpreter.executeString("function f() { f() }\nf()")
+        }
+        assertTrue(ex.message?.contains("depth") == true || ex.message?.contains("recursion") == true)
+    }
+
+    @Test
+    fun `convertXmlToMap rzuca na zbyt gleboko zagniezdzone XML`() {
+        val depth = 110
+        val open = (1..depth).joinToString("") { "<l$it>" }
+        val close = (depth downTo 1).joinToString("") { "</l$it>" }
+        val xml = """<?xml version="1.0"?><dml><root>$open x $close</root></dml>"""
+        assertThrows<RuntimeException> { interpreter.convertXmlToMap(xml) }
+    }
+
+    @Test
+    fun `convertPlistToMap rzuca na zbyt gleboko zagniezdzone plist`() {
+        val depth = 110
+        val open = (1..depth).joinToString("") { "<dict><key>k$it</key>" }
+        val close = "</dict>".repeat(depth)
+        val plist = """<?xml version="1.0"?><plist version="1.0"><dict><key>root</key>$open<string>v</string>$close</dict></plist>"""
+        assertThrows<RuntimeException> { interpreter.convertPlistToMap(plist) }
+    }
+
+    @Test
+    fun `convertJsonToMap rzuca na zbyt gleboko zagniezdzone JSON`() {
+        val depth = 110
+        val json = "{" + """"k":{""".repeat(depth) + """"v":1""" + "}".repeat(depth + 1)
+        val jsonElement = Json.parseToJsonElement(json).jsonObject
+        assertThrows<RuntimeException> { interpreter.convertJsonToMap(jsonElement) }
+    }
+
+    @Test
+    fun `wywolania funkcji ponizej limitu dzialaja poprawnie`() {
+        interpreter.executeString("""
+            function add(a, b) { return a + b; }
+            number result = add(1, 2);
+        """.trimIndent())
+    }
+
+    @Test
+    fun `deklaracja number z wartoscia string rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""number x = "hello";""")
+        }
+    }
+
+    @Test
+    fun `deklaracja string z wartoscia number rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""string x = 42;""")
+        }
+    }
+
+    @Test
+    fun `deklaracja boolean z wartoscia string rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""boolean x = "true";""")
+        }
+    }
+
+    @Test
+    fun `deklaracja boolean z wartoscia number rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""boolean x = 0;""")
+        }
+    }
+
+    @Test
+    fun `deklaracja list z wartoscia string rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""list x = "not a list";""")
+        }
+    }
+
+    @Test
+    fun `deklaracja char z wartoscia wieloznakowa rzuca IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""char x = "ab";""")
+        }
+    }
+
+    @Test
+    fun `poprawna deklaracja number int dziala`() {
+        interpreter.executeString("""number x = 42;""")
+    }
+
+    @Test
+    fun `poprawna deklaracja number float dziala`() {
+        interpreter.executeString("""number x = 3.14;""")
+    }
+
+    @Test
+    fun `poprawna deklaracja string dziala`() {
+        interpreter.executeString("""string x = "hello";""")
+    }
+
+    @Test
+    fun `poprawna deklaracja boolean dziala`() {
+        interpreter.executeString("""boolean x = true;""")
+    }
+
+    @Test
+    fun `deklaracja bez inicjalizacji nie rzuca bledu`() {
+        interpreter.executeString("""number x;""")
+    }
+
+    @Test
+    fun `komunikat bledu zawiera nazwe zmiennej i zadeklarowany typ`() {
+        val ex = assertThrows<IllegalArgumentException> {
+            interpreter.executeString("""number x = "hello";""")
+        }
+        assertTrue(ex.message?.contains("x") == true)
+        assertTrue(ex.message?.contains("number") == true)
+    }
+
 }

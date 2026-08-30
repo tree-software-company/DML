@@ -18,8 +18,8 @@ jobs:
       - run:
           name: Clone and update homebrew-dml formula
           command: |
-            git config --global user.name "simon04PL"
-            git config --global user.email "szymon.msa@gmail.com"
+            git config --global user.name "$GIT_USER_NAME"
+            git config --global user.email "$GIT_USER_EMAIL"
 
             git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml 

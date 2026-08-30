@@ -30,7 +30,10 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         private const val REGEX_TIMEOUT_MS = 1000L
         const val MAX_PATTERN_LENGTH = 500
         const val MAX_INPUT_LENGTH = 10_000
+        const val MAX_CALL_DEPTH = 500
     }
+
+    private var callDepth = 0
 
     constructor() : this(SymbolTable())
 
@@ -149,14 +152,19 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     }
 
     private fun callFunction(name: String, args: List<Any?>): Any? {
+        if (callDepth >= MAX_CALL_DEPTH) {
+            throw RuntimeException(
+                "Maximum call depth of $MAX_CALL_DEPTH exceeded — possible infinite recursion"
+            )
+        }
         val function = functions[name] ?: throw RuntimeException("Function '$name' not found")
-        
+        callDepth++
         try {
             val params = function.parameterList()?.IDENTIFIER() ?: emptyList()
             if (params.size != args.size) {
                 throw RuntimeException("Function '$name' expects ${params.size} arguments, got ${args.size}")
             }
-            
+
             val oldValues = mutableMapOf<String, Any?>()
             for (i in params.indices) {
                 val paramName = params[i].text
@@ -165,11 +173,11 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
                 }
                 symbolTable.setVariable(paramName, args[i])
             }
-            
+
             for (stmt in function.statement()) {
                 visit(stmt)
             }
-            
+
             for (i in params.indices) {
                 val paramName = params[i].text
                 if (oldValues.containsKey(paramName)) {
@@ -178,15 +186,17 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
                     symbolTable.removeVariable(paramName)
                 }
             }
-            
+
             return null
         } catch (e: ReturnValue) {
-            val params = function.parameterList()?.IDENTIFIER() ?: emptyList()
-            for (i in params.indices) {
-                val paramName = params[i].text
+            val retParams = function.parameterList()?.IDENTIFIER() ?: emptyList()
+            for (i in retParams.indices) {
+                val paramName = retParams[i].text
                 symbolTable.removeVariable(paramName)
             }
             return e.value
+        } finally {
+            callDepth--
         }
     }
 
@@ -227,10 +237,31 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         return if (ctx.expression() != null) visit(ctx.expression()) else super.visitPrimaryExpression(ctx)
     }
 
+    private fun validateTypeMatch(declaredType: String, value: Any?, name: String) {
+        if (value == null) return
+        val valid = when (declaredType) {
+            "string"                    -> value is String
+            "number"                    -> value is Int || value is Double || value is Long
+            "boolean"                   -> value is Boolean
+            "list"                      -> value is List<*>
+            "map"                       -> value is Map<*, *>
+            "char"                      -> value is String && value.length == 1
+            "url", "file"               -> value is String
+            "date", "datetime", "time"  -> true
+            else                        -> true
+        }
+        if (!valid) {
+            throw IllegalArgumentException(
+                "Type mismatch: variable '$name' declared as '$declaredType' but assigned value of type ${value::class.simpleName}"
+            )
+        }
+    }
+
     override fun visitDeclaration(ctx: DMLParser.DeclarationContext): Any? {
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
         val value = ctx.expression()?.let { visit(it) }
+        validateTypeMatch(type, value, name)
         symbolTable.setVariable(name, value)
         return null
     }
@@ -246,6 +277,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         val type = ctx.TYPE().text
         val name = ctx.IDENTIFIER().text
         val value = visit(ctx.expression())
+        validateTypeMatch(type, value, name)
         val isPrivate = ctx.modifier() != null
         symbolTable.setVariable(name, value, isPrivate)
         return null
@@ -451,11 +483,19 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     }
 
     fun execute(tree: ParseTree) {
-        visit(tree)
+        try {
+            visit(tree)
+        } catch (e: StackOverflowError) {
+            throw RuntimeException("Stack overflow — expression nesting too deep or infinite recursion", e)
+        }
     }
 
     fun executeAndPrint(tree: ParseTree) {
-        visit(tree)
+        try {
+            visit(tree)
+        } catch (e: StackOverflowError) {
+            throw RuntimeException("Stack overflow — expression nesting too deep or infinite recursion", e)
+        }
         symbolTable.printVariables()
     }
 
@@ -487,7 +527,11 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         val parser = DMLParser(tokens)
         val tree = parser.file()
 
-        visit(tree)
+        try {
+            visit(tree)
+        } catch (e: StackOverflowError) {
+            throw RuntimeException("Stack overflow — expression nesting too deep or infinite recursion in file ${file.name}", e)
+        }
 
         currentDirectory = previousDirectory
     }
