@@ -31,6 +31,17 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         const val MAX_PATTERN_LENGTH = 500
         const val MAX_INPUT_LENGTH = 10_000
         const val MAX_CALL_DEPTH = 500
+        const val MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024
+
+        fun readFileChecked(file: File): String {
+            val size = file.length()
+            if (size > MAX_FILE_SIZE_BYTES) {
+                throw SecurityException(
+                    "File '${file.name}' is too large ($size bytes). Maximum allowed size is $MAX_FILE_SIZE_BYTES bytes."
+                )
+            }
+            return file.readText()
+        }
     }
 
     private var callDepth = 0
@@ -61,12 +72,12 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
             val previousDirectory = currentDirectory
             currentDirectory = file.parentFile.toPath()
             
-            val content = file.readText()
+            val content = readFileChecked(file)
             val lexer = DMLLexer(CharStreams.fromString(content))
             val tokens = CommonTokenStream(lexer)
             val parser = DMLParser(tokens)
             val tree = parser.file()
-            
+
             visit(tree)
             
             currentDirectory = previousDirectory
@@ -521,7 +532,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
             sandboxRoot = currentDirectory
         }
 
-        val content = canonicalFile.readText()
+        val content = readFileChecked(canonicalFile)
         val lexer = DMLLexer(CharStreams.fromString(content))
         val tokens = CommonTokenStream(lexer)
         val parser = DMLParser(tokens)
