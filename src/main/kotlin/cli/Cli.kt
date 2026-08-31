@@ -27,6 +27,7 @@ class Cli {
                 "brew uninstall dml",
                 "brew untap tree-software-company/dml",
                 "brew tap tree-software-company/dml",
+                "brew trust tree-software-company/dml",
                 "brew install dml"
             )
             for (cmd in commands) {
@@ -34,7 +35,11 @@ class Cli {
                 val process = ProcessBuilder(*cmd.split(" ").toTypedArray())
                     .inheritIO()
                     .start()
-                process.waitFor()
+                val exitCode = process.waitFor()
+                if (exitCode != 0) {
+                    println("Failed to update DML: '$cmd' exited with code $exitCode")
+                    return
+                }
             }
             println("DML updated successfully.")
             return
