@@ -17,7 +17,7 @@ class Cli {
         }
 
         if (args[0] in listOf("-v", "--version", "version")) {
-            println("DML version 0.6.2")
+            println("DML version 0.8.1")
             return
         }
 
