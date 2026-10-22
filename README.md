@@ -37,7 +37,7 @@ Then you can use it globally like:
 dml -r dml test.dml
 ```
 
-> ℹ️ The Homebrew formula will download the `.jar` from GitHub Releases automatically.
+> ℹ️ The Homebrew formula downloads the `.jar` from GitHub Releases, verifies its SHA-256 checksum and runs it with the Homebrew-managed `openjdk@17`.
 
 ---
 
@@ -75,7 +75,7 @@ Paste:
 
 ```bash
 #!/bin/bash
-java -jar /path/to/DML-all.jar "$@"
+exec /path/to/jdk-17/bin/java -jar /path/to/DML-all.jar "$@"
 ```
 
 Then make it executable:
@@ -89,6 +89,16 @@ Now you can run:
 ```bash
 dml read file.dml
 ```
+
+#### 4. Verify a downloaded `.jar`
+
+A `.jar` downloaded from GitHub Releases runs with the full permissions of your user. Compare its checksum with the `sha256` pinned in the [Homebrew formula](https://github.com/tree-software-company/homebrew-dml/blob/main/dml.rb) before running it:
+
+```bash
+shasum -a 256 DML-all.jar
+```
+
+Do not run a `.jar` whose checksum differs.
 
 ## 📄 Example DML Code
 
