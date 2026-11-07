@@ -5,7 +5,53 @@ import interpreter.DMLInterpreter
 import java.io.File
 
 class Cli {
-    fun run(args: Array<String>) {
+    private class ModeArguments(val args: Array<String>, val mode: String?)
+
+    private fun extractMode(rawArgs: Array<String>): ModeArguments? {
+        val remaining = mutableListOf<String>()
+        var mode: String? = null
+        var index = 0
+        while (index < rawArgs.size) {
+            val arg = rawArgs[index]
+            val value: String? = when {
+                arg == "--mode" || arg == "-m" -> {
+                    if (index + 1 >= rawArgs.size) {
+                        println("Error: $arg requires a mode name")
+                        return null
+                    }
+                    index++
+                    rawArgs[index]
+                }
+                arg.startsWith("--mode=") -> arg.removePrefix("--mode=")
+                else -> null
+            }
+            if (value == null) {
+                remaining.add(arg)
+            } else {
+                if (mode != null) {
+                    println("Error: Mode can be given only once")
+                    return null
+                }
+                mode = value
+            }
+            index++
+        }
+        return ModeArguments(remaining.toTypedArray(), mode)
+    }
+
+    private fun newExecutor(mode: String?): DMLExecutor {
+        val executor = DMLExecutor()
+        if (mode != null) {
+            executor.selectMode(mode)
+        }
+        return executor
+    }
+
+    fun run(rawArgs: Array<String>) {
+        val parsed = extractMode(rawArgs) ?: return
+        val args = parsed.args
+        val mode = parsed.mode
+
         if (args.isEmpty()) {
             printHelp()
             return
@@ -55,6 +101,12 @@ class Cli {
             "text" to args[0]
         }
 
+        val convertsToDml = !isWrite && format.lowercase() in listOf("xml", "plist", "json", "yaml")
+        if (mode != null && convertsToDml) {
+            println("Error: --mode works only when running a .dml file")
+            return
+        }
+
         val file = File(filePath)
         if (!file.exists()) {
             println("Error: File not found: $filePath")
@@ -63,7 +115,7 @@ class Cli {
 
         try {
             if (isWrite) {
-                val executor = DMLExecutor()
+                val executor = newExecutor(mode)
                 executor.executeFile(file)
                 when (format.lowercase()) {
                     "xml" -> printXml(executor.getSymbolTable())
@@ -97,7 +149,7 @@ class Cli {
                         map.forEach { (key, value) -> println("$key = $value") }
                     }
                     "text", "dml" -> {
-                        val executor = DMLExecutor()
+                        val executor = newExecutor(mode)
                         executor.executeFile(file)
                         executor.getSymbolTable().forEach { (key, value) ->
                             println("$key = $value")
@@ -137,6 +189,7 @@ class Cli {
           -f <file>                - Format .dml file
           -e '<expression>' <file> - Add DML expression to file
           -n <file>                - Create a new DML file with a template
+          --mode <name>, -m <name> - Run the mode <name> blocks when executing a .dml file
           -h, --help               - Show this help
           -v, --version            - Show lang version
           -u, update               - Update DML via Homebrew
@@ -317,6 +370,7 @@ fun printHelp() {
           -f <file>                - Format .dml file
           -e '<expression>' <file> - Add DML expression to file
           -n <file>                - Create a new DML file with a template
+          --mode <name>, -m <name> - Run the mode <name> blocks when executing a .dml file
           -h, --help               - Show this help
           -v, --version            - Show lang version
           -u, update               - Update DML via Homebrew
