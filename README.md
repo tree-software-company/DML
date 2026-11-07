@@ -12,6 +12,8 @@ Think of it as a strongly-typed, comment-friendly version of JSON — built for 
 - ✅ Possibility to create class
 - ✅ Arithmetic operations (e.g. `number age = 20 + 5`)
 - ✅ Function: `now()` with pssibility to add and subtraction dates `d` - day; `h` - hour;`m` - minutes (e.g. `date tomorrow = now("+1d");`)
+- ✅ Configuration files: `loadEnv(".env")` and `env("KEY")` read values from a `.env` file
+- ✅ Environments: `mode dev { ... }` and `mode prod { ... }` blocks selected with `--mode`
 - ✅ Nested structures (e.g. `event.user.name`)
 - ✅ List & Map literals
 - ✅ Type checking with error reporting
@@ -126,11 +128,81 @@ Variables: {
 }
 ```
 
+## 🔐 Configuration Files (.env)
+
+A DML program can read values from a `.env` file that lies in the project directory (the directory of the executed `.dml` file or below it).
+
+`.env`:
+
+```bash
+DB_HOST=localhost
+export DB_PORT="5432"
+API_KEY=top-secret # inline comment
+```
+
+`app.dml`:
+
+```bash
+loadEnv(".env");
+
+string host = env("DB_HOST");
+string port = env("DB_PORT", "1111");
+string region = env("REGION", "eu-west-1");
+private string apiKey = env("API_KEY");
+```
+
+- `loadEnv(path)` loads a `.env` file. Calling it again merges the files, later keys win. The path is relative to the file that calls it and must stay inside the project directory; traversal, absolute paths and symlinks leading outside are rejected.
+- `env("KEY")` returns the value as a `string` and fails with an error naming the key when it is not defined.
+- `env("KEY", default)` returns `default` when the key is not defined; the default can be of any type.
+- Supported syntax: `KEY=value`, optional `export` prefix, `"double quoted"` values with `\n`, `\t`, `\"` and `\\` escapes, `'single quoted'` literal values, `#` comments on their own line or after a space. Variables such as `${HOME}` are not expanded.
+- Only values loaded with `loadEnv` are visible. Environment variables of the process are not exposed to DML programs.
+- Limits: the file may not exceed 10 MiB, 1000 keys and 10000 characters per value. Error messages name the key or line, never the value.
+- Values are always strings, so `number port = env("PORT")` is a type error. The CLI prints every variable that is not `private`; declare secrets as `private`.
+- `loadEnv` works only when running a file (`dml -r dml file.dml`), not for inline code.
+
+## 🌍 Modes (dev / prod)
+
+A DML file can keep the values of several environments side by side in `mode` blocks. Only the block of the selected mode is executed.
+
+`app.dml`:
+
+```bash
+string app = "tree";
+
+mode dev {
+    string db = "localhost";
+}
+
+mode prod {
+    string db = "prod.db.server";
+}
+```
+
+```bash
+dml -r dml app.dml --mode prod
+```
+
+Output:
+
+```bash
+app = tree
+db = prod.db.server
+```
+
+- `mode NAME { ... }` is allowed only at the top level of a file. It cannot be nested and cannot be placed inside a function. `NAME` is any identifier (`dev`, `prod`, `staging`...).
+- The mode is selected with `--mode NAME`, `--mode=NAME` or `-m NAME`, anywhere on the command line. The flag can be given only once, and the name may contain only letters, digits and underscores (up to 64 characters).
+- Without the flag every `mode` block is skipped, so a production block never runs by accident. Blocks of other modes are not executed at all: their `loadEnv`, `import`, `print` and `assert` statements do nothing.
+- The statements of the selected block run in place, in the global scope, so the order in the file decides which declaration wins. A block can use `private`, declare functions and call `loadEnv`; the sandbox rules of `import` and `loadEnv` apply to it unchanged.
+- Imported files can contain `mode` blocks too; they follow the mode selected for the main file.
+- `mode` is a reserved word, so it can no longer be used as a variable, class or instance name.
+- The flag works with `dml -r dml FILE` and `dml -w FORMAT FILE`. Conversions from other formats (`-r json`, `-r yaml`, `-r xml`, `-r plist`) reject it. Inline code does not take part in modes.
+
 ## 📚 CLI Commands
 
 | Command                     | Description                            |
 | --------------------------- | -------------------------------------- |
 | `dml -r dml FILE`           | Executes and interprets a .dml file    |
+| `dml -r dml FILE --mode NAME` | Executes a .dml file with the `mode NAME` blocks (`-m NAME`) |
 | `dml -r json FILE`          | Convert .json file for .dml file       |
 | `dml -r yaml FILE`          | Convert .yaml file for .dml file       |
 | `dml -r xml FILE`           | Convert .xml file for .dml file        |

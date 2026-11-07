@@ -4,7 +4,11 @@ grammar DML;
     package parser;
 }
 
-file: statement+;
+file: (statement | modeDeclaration)+;
+
+modeDeclaration
+    : 'mode' IDENTIFIER '{' statement* '}'
+    ;
 
 statement
     : declaration

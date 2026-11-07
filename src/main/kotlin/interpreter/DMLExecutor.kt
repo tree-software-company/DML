@@ -25,12 +25,16 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     private val importStack = mutableListOf<String>()
     private val functions = mutableMapOf<String, DMLParser.FunctionDeclarationContext>()
     private val regexPatterns = mutableMapOf<String, Regex>()
+    private val envValues = mutableMapOf<String, String>()
+    private var activeMode: String? = null
 
     companion object {
         private const val REGEX_TIMEOUT_MS = 1000L
+        private val MODE_NAME_PATTERN = Regex("[a-zA-Z_][a-zA-Z0-9_]*")
         const val MAX_PATTERN_LENGTH = 500
         const val MAX_INPUT_LENGTH = 10_000
         const val MAX_CALL_DEPTH = 500
+        const val MAX_MODE_NAME_LENGTH = 64
         const val MAX_FILE_SIZE_BYTES = 10L * 1024 * 1024
 
         fun readFileChecked(file: File): String {
@@ -47,6 +51,24 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
     private var callDepth = 0
 
     constructor() : this(SymbolTable())
+
+    fun selectMode(name: String) {
+        if (name.length > MAX_MODE_NAME_LENGTH || !MODE_NAME_PATTERN.matches(name)) {
+            throw IllegalArgumentException(
+                "Invalid mode name: use letters, digits and underscores, starting with a letter or underscore, " +
+                    "up to $MAX_MODE_NAME_LENGTH characters"
+            )
+        }
+        activeMode = name
+    }
+
+    override fun visitModeDeclaration(ctx: DMLParser.ModeDeclarationContext): Any? {
+        if (ctx.IDENTIFIER().text != activeMode) {
+            return null
+        }
+        ctx.statement().forEach { visitStatement(it) }
+        return null
+    }
 
     override fun visitImportStatement(ctx: DMLParser.ImportStatementContext): Any? {
         val filePath = ctx.STRING().text.removeSurrounding("\"").removeSurrounding("'")
@@ -168,7 +190,7 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
                 "Maximum call depth of $MAX_CALL_DEPTH exceeded — possible infinite recursion"
             )
         }
-        val function = functions[name] ?: throw RuntimeException("Function '$name' not found")
+        val function = functions[name] ?: return callBuiltin(name, args)
         callDepth++
         try {
             val params = function.parameterList()?.IDENTIFIER() ?: emptyList()
@@ -209,6 +231,47 @@ class DMLExecutor(private val symbolTable: SymbolTable) : DMLBaseVisitor<Any?>()
         } finally {
             callDepth--
         }
+    }
+
+    private fun callBuiltin(name: String, args: List<Any?>): Any? {
+        return when (name) {
+            "loadEnv" -> loadEnv(args)
+            "env" -> readEnv(args)
+            else -> throw RuntimeException("Function '$name' not found")
+        }
+    }
+
+    private fun loadEnv(args: List<Any?>): Any? {
+        val path = args.singleOrNull() as? String
+            ?: throw RuntimeException("loadEnv expects 1 argument: the path of a .env file")
+
+        if (sandboxRoot == null) {
+            throw SecurityException("loadEnv is available only when running a file, not for inline code")
+        }
+
+        val file = File(resolveImportPath(path))
+        if (!file.isFile) {
+            throw RuntimeException("loadEnv error: File not found: $path")
+        }
+
+        val loaded = EnvFileParser.parse(readFileChecked(file))
+        val merged = envValues + loaded
+        if (merged.size > EnvFileParser.MAX_ENV_ENTRIES) {
+            throw RuntimeException("loadEnv error: more than ${EnvFileParser.MAX_ENV_ENTRIES} entries loaded")
+        }
+
+        envValues.putAll(loaded)
+        return null
+    }
+
+    private fun readEnv(args: List<Any?>): Any? {
+        val key = args.firstOrNull() as? String
+        if (key == null || args.size > 2) {
+            throw RuntimeException("env expects a key and an optional default value")
+        }
+
+        return envValues[key]
+            ?: if (args.size == 2) args[1] else throw RuntimeException("Environment key '$key' is not defined")
     }
 
     override fun visitPrimaryExpression(ctx: DMLParser.PrimaryExpressionContext): Any? {

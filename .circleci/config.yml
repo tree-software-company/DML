@@ -5,8 +5,8 @@ jobs:
     docker:
       - image: cimg/openjdk:17.0
     environment:
-      NEW_VERSION: "0.8.2"
-      SHA256: "e0167be1b1063455d74cb5fdf9c44cd320692a30b39b47f369cbc00e8bac07a1"
+      NEW_VERSION: "0.9.0"
+      SHA256: "e5f87380c03b5fb705a1b6357802a3a8f9b1273aed2e1346dd1332215cf3b677"
 
     steps:
       - checkout
@@ -34,6 +34,8 @@ jobs:
 
             git clone git@github.com:tree-software-company/homebrew-dml.git
             cd homebrew-dml
+            RELEASE_BRANCH="release/${NEW_VERSION}"
+            git checkout -b "${RELEASE_BRANCH}"
 
             sed -i -E \
               -e "s#(releases/download/)[^/]+(/DML-all\.jar)#\1${NEW_VERSION}\2#" \
@@ -45,8 +47,9 @@ jobs:
 
             git add dml.rb
             git diff --cached --quiet && exit 0
-            git commit -m "Update formula with new release"
-            git push git@github.com:tree-software-company/homebrew-dml.git HEAD:main
+            git commit -m "Update formula to ${NEW_VERSION}" -m "sha256 ${SHA256}"
+            git push origin "HEAD:refs/heads/${RELEASE_BRANCH}"
+            echo "Open the pull request: https://github.com/tree-software-company/homebrew-dml/compare/main...${RELEASE_BRANCH}?expand=1"
 
 workflows:
   version: 2
