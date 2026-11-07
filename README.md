@@ -12,6 +12,7 @@ Think of it as a strongly-typed, comment-friendly version of JSON — built for 
 - ✅ Possibility to create class
 - ✅ Arithmetic operations (e.g. `number age = 20 + 5`)
 - ✅ Function: `now()` with pssibility to add and subtraction dates `d` - day; `h` - hour;`m` - minutes (e.g. `date tomorrow = now("+1d");`)
+- ✅ Configuration files: `loadEnv(".env")` and `env("KEY")` read values from a `.env` file
 - ✅ Nested structures (e.g. `event.user.name`)
 - ✅ List & Map literals
 - ✅ Type checking with error reporting
@@ -125,6 +126,38 @@ Variables: {
   message=Welcome, Szymon
 }
 ```
+
+## 🔐 Configuration Files (.env)
+
+A DML program can read values from a `.env` file that lies in the project directory (the directory of the executed `.dml` file or below it).
+
+`.env`:
+
+```bash
+DB_HOST=localhost
+export DB_PORT="5432"
+API_KEY=top-secret # inline comment
+```
+
+`app.dml`:
+
+```bash
+loadEnv(".env");
+
+string host = env("DB_HOST");
+string port = env("DB_PORT", "1111");
+string region = env("REGION", "eu-west-1");
+private string apiKey = env("API_KEY");
+```
+
+- `loadEnv(path)` loads a `.env` file. Calling it again merges the files, later keys win. The path is relative to the file that calls it and must stay inside the project directory; traversal, absolute paths and symlinks leading outside are rejected.
+- `env("KEY")` returns the value as a `string` and fails with an error naming the key when it is not defined.
+- `env("KEY", default)` returns `default` when the key is not defined; the default can be of any type.
+- Supported syntax: `KEY=value`, optional `export` prefix, `"double quoted"` values with `\n`, `\t`, `\"` and `\\` escapes, `'single quoted'` literal values, `#` comments on their own line or after a space. Variables such as `${HOME}` are not expanded.
+- Only values loaded with `loadEnv` are visible. Environment variables of the process are not exposed to DML programs.
+- Limits: the file may not exceed 10 MiB, 1000 keys and 10000 characters per value. Error messages name the key or line, never the value.
+- Values are always strings, so `number port = env("PORT")` is a type error. The CLI prints every variable that is not `private`; declare secrets as `private`.
+- `loadEnv` works only when running a file (`dml -r dml file.dml`), not for inline code.
 
 ## 📚 CLI Commands
 

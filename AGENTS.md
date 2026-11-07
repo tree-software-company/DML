@@ -10,6 +10,7 @@ Single instruction file for Claude Code, Codex and Antigravity (CLAUDE.md only i
 2. The interpreter runs untrusted `.dml` input. Never weaken the sandbox root, import stack, recursion limit, file-size limit, timeouts or regex safeguards.
 3. Every interpreter, import or CLI change ships with a security test in `src/test/kotlin`.
 4. New code follows the structure below. Do not restructure existing code unprompted.
+5. Every user-visible change (language feature, built-in function, CLI flag, changed behaviour) updates the documentation and the patch notes in the same task: the `README.md` of this repo and the sibling repo `/home/tree/Documents/dev/lang/dml/dml-language.org`, following its `AGENTS.md`. That means a new release entry in `patch-notes.html` plus the regenerated `docs.html` and `docs/dml/` pages. Do not tag, release or deploy without asking.
 
 ## Commands
 
